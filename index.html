@@ -2845,27 +2845,50 @@
         updateSelectionUI();
     }
 
-    function bindToggle(headerId, contentId, defaultDisplay) {
+    // ==========================================
+    // 💾 State Persistence (Modified bindToggle)
+    // ==========================================
+
+    function bindToggle(headerId, contentId, defaultDisplay, storageKey) {
         const header = document.getElementById(headerId);
         const content = document.getElementById(contentId);
+
         if (header && content) {
+            // 1. Check LocalStorage on Load
+            // If user previously closed it, 'none' will be returned.
+            // If it's the first visit, savedState is null, so we use defaultDisplay.
+            const savedState = localStorage.getItem(storageKey);
+            const initialState = savedState !== null ? savedState : defaultDisplay;
+
+            // Apply initial state
+            content.style.display = initialState;
+            header.style.opacity = initialState === 'none' ? '0.7' : '1';
+
+            // 2. Click Event
             header.addEventListener('click', () => {
                 if (content.style.display === 'none') {
-                    content.style.display = defaultDisplay; // 展开
+                    // Expand
+                    content.style.display = defaultDisplay;
                     header.style.opacity = '1';
                 } else {
-                    content.style.display = 'none'; // 折叠
-                    header.style.opacity = '0.7'; // 折叠时标题稍微变暗
+                    // Collapse
+                    content.style.display = 'none';
+                    header.style.opacity = '0.7';
                 }
+
+                // 3. Save new state to LocalStorage
+                localStorage.setItem(storageKey, content.style.display);
             });
         }
     }
 
-    // 绑定右上角 (默认是 block 布局)
-    bindToggle('viz-header', 'viz-content', 'block');
+    // Bind Top-Right Panel (View Parameters)
+    // Key: 'mv_viz_panel_state'
+    bindToggle('viz-header', 'viz-content', 'block', 'mv_viz_panel_state');
 
-    // 绑定左上角 (默认是 grid 布局)
-    bindToggle('shortcut-header', 'shortcut-content', 'grid');
+    // Bind Top-Left Panel (Shortcuts)
+    // Key: 'mv_shortcut_panel_state'
+    bindToggle('shortcut-header', 'shortcut-content', 'grid', 'mv_shortcut_panel_state');
 
     // 🔥 核心：范围选择逻辑
     function selectTrackRange(startId, endId) {
