@@ -3,7 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SeeMusic 3D - DAW View</title>
+    <title>MIDI Visualizer</title>
+
+    <link rel="preconnect" href="https://fonts.loli.net">
+    <link rel="preconnect" href="https://gstatic.loli.net" crossorigin>
+    <link href="https://fonts.loli.net/css2?family=Chango&display=swap" rel="stylesheet">
 
 
     <style>
@@ -579,6 +583,78 @@
         }
         .menu-item:hover { background: var(--accent-blue); color: #fff; }
 
+        /* --- Logo 样式 (上下两行版) --- */
+        #app-logo {
+            display: flex;
+            align-items: center; /* 垂直居中整个 Logo 块 */
+            gap: 8px;            /* Logo 和版本号之间的间距 */
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 6px;
+            transition: opacity 0.2s;
+            user-select: none;
+            text-decoration: none;
+            height: 100%;        /* 占满工具栏高度 */
+        }
+
+        #app-logo:hover {
+            opacity: 0.8;
+        }
+
+        /* 新增：文字容器，负责垂直排列和居中 */
+        .logo-wrapper {
+            display: flex;
+            flex-direction: column; /* 垂直堆叠 */
+            align-items: center;    /* 水平居中 */
+            justify-content: center;
+            line-height: 1.0;       /* 紧凑行高 */
+        }
+
+        .logo-text {
+            font-family: 'Chango', sans-serif;
+            font-weight: 400;
+
+            /* 渐变文字效果 */
+            background: linear-gradient(to bottom, #ffffff 30%, #9ca3af 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        /* 上面的大字 MIDI */
+        .title-main {
+            font-size: 18px;
+            letter-spacing: 0.1em;
+        }
+
+        /* 下面的小字 Visualizer */
+        .title-sub {
+            font-size: 10px;
+            letter-spacing: 0.15em; /* 字间距稍微拉宽，与上面对齐 */
+            opacity: 0.9;
+        }
+
+        .version-tag {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            font-size: 9px;
+            background: var(--accent-blue);
+            color: white;
+            padding: 1px 4px;
+            border-radius: 4px;
+            font-weight: 600;
+            align-self: center; /* 让版本号稍微靠上一点，或者 center 居中 */
+            margin-top: 4px;        /* 微调位置 */
+        }
+
+        .version-tag {
+            font-size: 9px;
+            background: var(--accent-blue);
+            color: white;
+            padding: 1px 4px;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+
         /* Loading 遮罩 */
         #loading {
             background: rgba(0,0,0,0.4);
@@ -771,6 +847,16 @@
 
 <div id="daw-container">
     <div id="toolbar">
+        <div id="app-logo" title="点击查看版本更新">
+            <div class="logo-wrapper">
+                <span class="logo-text title-main">MIDI</span>
+                <span class="logo-text title-sub">Visualizer</span>
+            </div>
+            <span class="version-tag">v1.2.2</span>
+        </div>
+
+        <div class="toolbar-separator"></div>
+
         <button class="btn btn-blue" id="playBtn" style="border-color: rgba(48, 209, 88, 0.4); background: rgba(48, 209, 88, 0.1); color: #30d158;">
             PLAY
         </button>
@@ -799,6 +885,13 @@
         <button class="btn btn-accent" id="btn-bg">设置背景</button>
         <input type="file" id="bgInput" accept="image/*,video/*" style="display:none">
 
+        <button class="btn" id="bgSettingsBtn" style="padding: 0 8px;" title="背景参数设置">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="3"></circle>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+            </svg>
+        </button>
+
         <button class="btn btn-accent" id="btn-highlight-color" style="position:relative; overflow:hidden;">
             高光颜色
             <input type="color" id="highlightColorInput" value="#ffffff" style="position:absolute; left:0; top:0; width:100%; height:100%; opacity:0; cursor:pointer;">
@@ -807,13 +900,6 @@
         <button class="btn" id="viewSettingsBtn">视角参数</button>
 
         <button class="btn btn-red" id="clearTextureBtn" style="font-size:11px; padding: 4px 8px; height: 26px;">清除</button>
-
-        <button class="btn" id="bgSettingsBtn" style="padding: 0 8px; margin-left: auto;">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="12" cy="12" r="3"></circle>
-                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-            </svg>
-        </button>
     </div>
 
     <div id="ruler-container">
@@ -1080,6 +1166,60 @@
                 <button class="btn btn-primary" id="confirmImportBtn" style="flex: 1;">确认导入</button>
             </div>
             </div>
+        </div>
+    </div>
+</div>
+
+<div id="version-modal" style="display:none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 6000; justify-content: center; align-items: center;">
+    <div class="modal-content" style="width: 400px !important;">
+        <h3 style="border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 15px;">
+            MIDI Visualizer <span style="font-size: 12px; color: #888; font-weight: normal;">v1.3.0</span>
+        </h3>
+
+        <div style="height: 250px; overflow-y: auto; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px; margin-bottom: 20px;">
+            <p style="color: #aaa; font-size: 12px; margin-top: 0;">2024-01-14 1.3.0 (Current)</p>
+            <ul style="padding-left: 20px; color: #ddd; line-height: 1.6;">
+                <li>新增：左上角版本信息查看入口</li>
+                <li>新增：支持音频开头的静音自动剪切</li>
+                <li>新增：工程支持直接保存回原文件 (Ctrl+S / Cmd+S)</li>
+                <li>新增：增加“另存为”快捷键 (Shift + Ctrl+S / Shift+Cmd+S)</li>
+                <li>优化：背景设置齿轮移动至背景按钮旁</li>
+                <li>优化：录制视频支持流式写入 (不占内存)</li>
+                <li>修复：修复文件拖拽导入失效的问题</li>
+            </ul>
+
+            <p style="color: #aaa; font-size: 12px; margin-top: 15px;">2024-01-12 1.2.1</p>
+            <ul style="padding-left: 20px; color: #888; line-height: 1.6;">
+                <li>修复：修复导入/导出工程</li>
+            </ul>
+
+            <p style="color: #aaa; font-size: 12px; margin-top: 15px;">2024-01-12 1.2.0</p>
+            <ul style="padding-left: 20px; color: #888; line-height: 1.6;">
+                <li>新增：“视角参数”设置功能，保证多工程视角的统一（可导出导入参数）</li>
+                <li>新增：播放区域高光颜色更改功能（推荐亮色）</li>
+                <li>新增：上下区域调整把手</li>
+                <li>优化：支持MIDI、音频、图片、视频、视角JSON、工程JSON拖动导入</li>
+                <li>优化：可视化区域“Command/Control+双击”可重置视角，按住“Command/Control”拖动可平移，滚轮放大缩小</li>
+                <li>优化：“导入文件”的操作支持撤回</li>
+                <li>优化：优化midi导入轨道的同步</li>
+                <li>优化：删除了音符贴图和timeline zoom的调节</li>
+            </ul>
+
+            <p style="color: #aaa; font-size: 12px; margin-top: 15px;">2024-01-11 1.1.0</p>
+            <ul style="padding-left: 20px; color: #888; line-height: 1.6;">
+                <li>新增：加入Z-Space滑块</li>
+                <li>修复：修复某些浏览器调色盘闪退问题</li>
+            </ul>
+
+            <p style="color: #aaa; font-size: 12px; margin-top: 15px;">2024-01-10 1.0.0</p>
+            <ul style="padding-left: 20px; color: #888; line-height: 1.6;">
+                <li>基础功能上线：MIDI/Audio 导入</li>
+                <li>3D 可视化渲染引擎</li>
+            </ul>
+        </div>
+
+        <div class="modal-buttons">
+            <button class="btn btn-primary" id="closeVersionBtn" style="width: 100%;">关闭</button>
         </div>
     </div>
 </div>
@@ -3254,6 +3394,32 @@
 
 
     function initController() {
+
+        const versionModal = document.getElementById('version-modal');
+        const logoBtn = document.getElementById('app-logo');
+        const closeVerBtn = document.getElementById('closeVersionBtn');
+
+        if (logoBtn && versionModal) {
+            logoBtn.addEventListener('click', () => {
+                versionModal.style.display = 'flex';
+            });
+        }
+
+        if (closeVerBtn) {
+            closeVerBtn.addEventListener('click', () => {
+                versionModal.style.display = 'none';
+            });
+        }
+
+        // 点击弹窗背景关闭
+        if (versionModal) {
+            versionModal.addEventListener('click', (e) => {
+                if (e.target === versionModal) {
+                    versionModal.style.display = 'none';
+                }
+            });
+        }
+
         // 创建默认轨道
         const defaultAudioTrack = new Track("Audio", "audio");
         STATE.tracks.push(defaultAudioTrack);
@@ -3516,6 +3682,24 @@
                 // 如果正在打字，不要触发 DAW 的快捷键，但要允许 ESC 退出焦点
                 if (e.code === 'Escape') target.blur();
                 return;
+            }
+
+            // 5. 保存相关快捷键
+            if ((e.ctrlKey || e.metaKey) && e.code === 'KeyS') {
+                e.preventDefault(); // 阻止浏览器默认的保存弹窗
+
+                if (e.shiftKey) {
+                    // 🔥 情况 A: Shift + Ctrl + S (或 Shift + Cmd + S) -> 强制另存为 (Save As)
+                    // 生成默认文件名
+                    const defaultName = `SeeMusic_Project_${new Date().toLocaleDateString().replace(/\//g, '-')}`;
+                    // 调用另存为逻辑
+                    ProjectMgr.executeSave(defaultName);
+                    console.log("触发另存为 (Save As)");
+                } else {
+                    // 🔥 情况 B: Ctrl + S (或 Cmd + S) -> 智能保存 (Quick Save)
+                    // 如果有句柄则覆盖，没有则另存为
+                    ProjectMgr.quickSave();
+                }
             }
 
             // --- M 键：Mute 选中轨道 ---
@@ -4032,19 +4216,48 @@
 
         // 3. 拖离隐藏遮罩
         window.addEventListener('dragleave', (e) => {
-            // 只有当鼠标真的离开了窗口，或者进入了无效区域时才移除
-            // e.relatedTarget === null 通常意味着离开了浏览器窗口
             if (e.relatedTarget === null) {
                 document.body.classList.remove('global-drag-over');
             }
         });
 
         // 4. 释放文件
-        window.addEventListener('drop', (e) => {
+        window.addEventListener('drop', async (e) => {
             document.body.classList.remove('global-drag-over');
 
+            // 🔥🔥🔥 核心修复：必须在 await 之前获取 files！🔥🔥🔥
+            // 否则一旦进入 await 异步流程，e.dataTransfer 就会被浏览器清空
             const files = e.dataTransfer.files;
+
+            // 🔥 尝试获取 FileSystemHandle (用于支持拖拽后的保存)
+            const items = e.dataTransfer.items;
+            let droppedHandle = null;
+
+            // 现代浏览器支持 getAsFileSystemHandle
+            if (items && items.length > 0) {
+                const item = items[0];
+                if (item.kind === 'file' && item.getAsFileSystemHandle) {
+                    try {
+                        const handle = await item.getAsFileSystemHandle();
+                        if (handle.kind === 'file' && handle.name.endsWith('.json')) {
+                            droppedHandle = handle;
+                        }
+                    } catch(err) { console.log("Drop handle access denied"); }
+                }
+            }
+
+            // 这里使用我们最开始捕获的 files 变量，而不是 e.dataTransfer.files
             if (files.length > 0) {
+                // 如果检测到是 JSON 且获取到了句柄，存入 ProjectMgr
+                if (droppedHandle && files[0].name.endsWith('.json')) {
+                    ProjectMgr.currentFileHandle = droppedHandle;
+                } else {
+                    // 如果拖拽的是其他文件，或者浏览器不支持 handle，清空句柄以免误写
+                    if (files[0].name.endsWith('.json')) {
+                        ProjectMgr.currentFileHandle = null;
+                    }
+                }
+
                 handleGlobalDrop(files);
             }
         });
@@ -5380,20 +5593,45 @@
     // 6. 工程管理 (Save / Load / Undo)
     // ==========================================
     const ProjectMgr = {
+        // 🔥 新增：用于存储当前打开文件的句柄
+        currentFileHandle: null,
+
         init() {
-            // 点击保存按钮
+            // 点击保存按钮 (默认为另存为，但如果已有句柄则询问或覆盖，这里保留原逻辑为另存为，或者你可以改为调用 quickSave)
+            // 建议：点击工具栏的“保存工程”按钮执行 QuickSave（如果有文件），否则执行 SaveAs
             document.getElementById('saveProjectBtn').addEventListener('click', () => {
-                const defaultName = `SeeMusic_Project_${new Date().toLocaleDateString().replace(/\//g, '-')}`;
-                this.executeSave(defaultName);
+                this.quickSave();
             });
 
-            // 读取按钮
-            document.getElementById('loadProjectBtn').addEventListener('click', () => {
-                document.getElementById('projectInput').click();
+            // 🔥 修改读取按钮逻辑：优先使用 showOpenFilePicker 以获取句柄
+            document.getElementById('loadProjectBtn').addEventListener('click', async () => {
+                if (window.showOpenFilePicker) {
+                    try {
+                        const [handle] = await window.showOpenFilePicker({
+                            types: [{
+                                description: 'SeeMusic Project File',
+                                accept: { 'application/json': ['.json'] }
+                            }],
+                            multiple: false
+                        });
+
+                        // 获取文件并加载
+                        const file = await handle.getFile();
+                        this.currentFileHandle = handle; // 🔥 关键：保存句柄
+                        this.loadProject(file);
+                    } catch (err) {
+                        // 用户取消或不支持，忽略
+                        if (err.name !== 'AbortError') console.error(err);
+                    }
+                } else {
+                    // 降级方案：使用旧的 input 方式 (不支持覆盖保存)
+                    document.getElementById('projectInput').click();
+                }
             });
 
-            // 文件变更监听
+            // 文件变更监听 (降级方案)
             document.getElementById('projectInput').addEventListener('change', (e) => {
+                this.currentFileHandle = null; // input 方式无法获取写权限，重置句柄
                 this.loadProject(e.target.files[0]);
                 e.target.value = '';
             });
@@ -5456,12 +5694,42 @@
             };
         },
 
-        // 2. 修改：executeSave 变得很简单，直接调用上面的方法
+        // 🔥 新增：智能保存 (Quick Save / Ctrl+S)
+        async quickSave() {
+            // 1. 如果有句柄，直接写入原文件
+            if (this.currentFileHandle) {
+                try {
+                    const project = this.getCurrentState();
+                    const jsonStr = JSON.stringify(project);
+
+                    // 创建可写流
+                    const writable = await this.currentFileHandle.createWritable();
+                    await writable.write(jsonStr);
+                    await writable.close();
+
+                    // 简单的视觉反馈
+                    const btn = document.getElementById('saveProjectBtn');
+                    const originalText = btn.innerText;
+                    btn.innerText = "已保存!";
+                    setTimeout(() => btn.innerText = originalText, 1500);
+                    console.log("工程已保存到原文件");
+                    return;
+                } catch (err) {
+                    console.warn("写入原文件失败，转为另存为:", err);
+                    // 如果写入失败（例如权限丢失），转为 Save As
+                }
+            }
+
+            // 2. 如果没有句柄，执行“另存为”
+            const defaultName = `SeeMusic_Project_${new Date().toLocaleDateString().replace(/\//g, '-')}`;
+            this.executeSave(defaultName);
+        },
+
+        // 另存为 (Save As)
         async executeSave(fileName) {
-            const project = this.getCurrentState(); // 🔥 调用提取的方法
+            const project = this.getCurrentState();
             const jsonStr = JSON.stringify(project);
 
-            // 1. 尝试调用系统“另存为”窗口
             if (window.showSaveFilePicker) {
                 try {
                     const handle = await window.showSaveFilePicker({
@@ -5472,6 +5740,9 @@
                         }],
                     });
 
+                    // 🔥 关键：另存为成功后，更新当前句柄
+                    this.currentFileHandle = handle;
+
                     const writable = await handle.createWritable();
                     await writable.write(jsonStr);
                     await writable.close();
@@ -5481,12 +5752,12 @@
                         console.error('Save File Error:', err);
                         alert("保存失败，转为自动下载...");
                     } else {
-                        return; // 用户取消
+                        return;
                     }
                 }
             }
 
-            // 2. 备用方案：自动下载
+            // 备用方案：自动下载 (无法更新句柄)
             const blob = new Blob([jsonStr], { type: "application/json" });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
