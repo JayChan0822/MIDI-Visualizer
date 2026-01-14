@@ -1547,22 +1547,50 @@
     let tempLoadedMaterial = null;
 
     function setStarfieldState(visible) {
-        // 1. 设置 3D 星星可见性
+        // 1. 设置 3D 星星粒子可见性
         if (starMesh) starMesh.visible = visible;
 
         // 2. 同步 UI 开关状态
         const toggle = document.getElementById('starfieldToggle');
         if (toggle) toggle.checked = visible;
 
-        // 3. 切换背景颜色 (开启=星空渐变，关闭=纯黑)
         const vizSection = document.getElementById('visualizer-section');
-        if (vizSection) {
-            if (visible) {
-                // 开：显示深蓝星空渐变
-                vizSection.style.background = "radial-gradient(circle at center, #1b2735 0%, #000000 100%)";
+
+        if (visible) {
+            // 如果用户没有上传自定义背景，显示星空板子
+            if (!currentBgType) {
+                if (bgMaterial && window.starfieldBgTexture) {
+                    bgMaterial.uniforms.tMap.value = window.starfieldBgTexture;
+
+                    // 重置参数
+                    bgMaterial.uniforms.uOpacity.value = 1.0;
+                    bgMaterial.uniforms.uBrightness.value = 0.0;
+                    bgMaterial.uniforms.uContrast.value = 1.0;
+
+                    // --- 🔥 修复椭圆变形的关键 ---
+                    // 1. 告诉系统，当前贴图的长宽比是 1:1 (正方形)
+                    bgImageAspect = 1.0;
+
+                    // 2. 强制设为 'cover' 模式 (保持比例铺满)
+                    BG_STATE.fit = 'cover';
+                    document.getElementById('bg-fit').value = 'cover'; // 同步UI
+
+                    // 3. 立即触发一次 UV 计算，修正拉伸
+                    updateBackgroundUV();
+
+                    // 显示
+                    if (bgMesh) bgMesh.visible = true;
+                    if (vizSection) vizSection.style.background = "#000000";
+                }
             } else {
-                // 关：恢复纯黑背景 (防止在导入图片时，边缘有蓝色底色)
-                vizSection.style.background = "#000000";
+                // 自定义背景
+                if (bgMesh) bgMesh.visible = true;
+            }
+        } else {
+            // 关闭
+            if (!currentBgType) {
+                if (bgMesh) bgMesh.visible = false;
+                if (vizSection) vizSection.style.background = "#000000";
             }
         }
     }
@@ -2164,37 +2192,75 @@
 
         // 🎨 1. 用代码画一个圆形的渐变贴图 (无需外部图片)
         const canvas = document.createElement('canvas');
-        canvas.width = 32;
-        canvas.height = 32;
+        canvas.width = 64; // 稍微大一点，画质更好
+        canvas.height = 64;
         const ctx = canvas.getContext('2d');
 
         // 创建径向渐变：中间白 -> 边缘透明
         const gradient = ctx.createRadialGradient(16, 16, 0, 16, 16, 16);
         gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');   // 中心最亮
-        gradient.addColorStop(0.2, 'rgba(255, 255, 255, 0.8)'); // 核心光晕
+        gradient.addColorStop(0.3, 'rgba(255, 255, 255, 0.8)'); // 核心光晕
         gradient.addColorStop(0.5, 'rgba(255, 255, 255, 0.2)'); // 外部光晕
         gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');          // 边缘完全透明
 
         ctx.fillStyle = gradient;
-        ctx.fillRect(0, 0, 32, 32);
+        ctx.fillRect(0, 0, 64, 64);
 
         const starTexture = new THREE.CanvasTexture(canvas);
 
         // 🎨 2. 设置材质
         const starMat = new THREE.PointsMaterial({
-            size: 3.0,             // 稍微调大一点，因为边缘是透明的
-            map: starTexture,      // ✅ 应用刚才画的圆形贴图
+            size: 4.0,             // 🔥 稍微调大一点，录制出来才不会是单像素噪点
+            map: starTexture,
             color: 0xffffff,
-            transparent: true,     // 必须开启透明
-            opacity: 0.9,
-            sizeAttenuation: true, // 远小近大
-            depthWrite: false,     // ✅ 关键：防止透明粒子相互遮挡产生黑边
-            blending: THREE.AdditiveBlending // ✅ 关键：叠加混合模式，让星星看起来更亮、更像发光体
+            transparent: true,
+            opacity: 1.0,          // 保持高不透明度
+            sizeAttenuation: true,
+            depthWrite: false,
+            blending: THREE.AdditiveBlending
         });
 
         starMesh = new THREE.Points(starGeo, starMat);
         starMesh.frustumCulled = false;
         scene.add(starMesh);
+
+        const bgCanvas = document.createElement('canvas');
+        bgCanvas.width = 512;
+        bgCanvas.height = 512;
+        const bgCtx = bgCanvas.getContext('2d');
+
+        // 渐变 (之前的颜色)
+        const bgGrad = bgCtx.createRadialGradient(256, 256, 0, 256, 256, 480);
+        bgGrad.addColorStop(0.0, '#586b85');
+        bgGrad.addColorStop(0.4, '#253045');
+        bgGrad.addColorStop(1.0, '#000000');
+
+        bgCtx.fillStyle = bgGrad;
+        bgCtx.fillRect(0, 0, 512, 512);
+
+        // --- 🔥 关键优化：添加抖动 (Dithering) 去除色阶 ---
+        const imageData = bgCtx.getImageData(0, 0, 512, 512);
+        const data = imageData.data;
+
+        for (let i = 0; i < data.length; i += 4) {
+            // 生成 -1.5 到 +1.5 之间的随机噪音
+            // 这个数值很小，不影响观感，但足以打破色阶
+            const noise = (Math.random() - 0.5) * 3;
+
+            data[i]     = Math.max(0, Math.min(255, data[i] + noise));     // R
+            data[i + 1] = Math.max(0, Math.min(255, data[i + 1] + noise)); // G
+            data[i + 2] = Math.max(0, Math.min(255, data[i + 2] + noise)); // B
+            // Alpha 不动
+        }
+        bgCtx.putImageData(imageData, 0, 0);
+        // ------------------------------------------------
+
+        window.starfieldBgTexture = new THREE.CanvasTexture(bgCanvas);
+        window.starfieldBgTexture.encoding = THREE.sRGBEncoding;
+
+        // 优化贴图过滤模式，进一步平滑
+        window.starfieldBgTexture.minFilter = THREE.LinearFilter;
+        window.starfieldBgTexture.magFilter = THREE.LinearFilter;
     }
 
     function deleteTrackContext(track) {
@@ -6214,6 +6280,36 @@
         async startRecording() {
             this.modal.style.display = 'none';
 
+            this.wasBgVisible = bgMesh ? bgMesh.visible : false;
+            this.forcedBgVisible = false;
+
+            const isStarfieldOn = document.getElementById('starfieldToggle').checked;
+
+            // 如果没有自定义背景图(currentBgType为空)，且星空开关开了
+            if (!currentBgType && isStarfieldOn && bgMesh && bgMaterial) {
+
+                // 1. 强制赋予纹理 (这步最关键，之前缺了这个)
+                if (window.starfieldBgTexture) {
+                    bgMaterial.uniforms.tMap.value = window.starfieldBgTexture;
+                }
+
+                // 2. 重置 Shader 参数，确保原色显示
+                bgMaterial.uniforms.uOpacity.value = 1.0;
+                bgMaterial.uniforms.uBrightness.value = 0.0;
+                bgMaterial.uniforms.uContrast.value = 1.0;
+
+                // 3. 强制设置为铺满 (Cover)
+                BG_STATE.fit = 'cover';
+                updateBackgroundUV();
+
+                // 4. 让它可见
+                bgMesh.visible = true;
+                this.forcedBgVisible = true; // 标记一下，录完要关掉
+            }
+            // 如果用户自己传了图，那保持原样即可
+            else if (bgMesh && this.wasBgVisible) {
+                bgMesh.visible = true;
+            }
             // --- 1. 获取参数 ---
             const ratio = parseFloat(document.getElementById('exportRatio').value);
             const resolutionP = parseInt(document.getElementById('exportRes').value);
@@ -6274,11 +6370,18 @@
             this.originalSize.height = canvas.height;
             this.originalPixelRatio = renderer.getPixelRatio();
 
-            renderer.setPixelRatio(1);
+            this.originalClearAlpha = renderer.getClearAlpha();
+
+
+            renderer.setClearColor(0x000000, 1.0);
+
+            renderer.setPixelRatio(2.0);
             renderer.setSize(width, height);
             document.getElementById('canvas-wrapper').classList.add('recording-mode');
             camera.aspect = ratio;
             camera.updateProjectionMatrix();
+            updateBackgroundSize();
+            updateBackgroundUV();
 
             // --- 3. 音频设置 ---
             if (!this.audioContext) this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -6396,11 +6499,29 @@
             document.getElementById('canvas-wrapper').classList.remove('recording-mode');
 
             renderer.setPixelRatio(this.originalPixelRatio || window.devicePixelRatio);
+
+            renderer.setClearColor(0x0b0c15, 0);
+
+            if (this.forcedBgVisible) {
+                // 如果是我们刚才强行打开的，现在关掉它
+                if (bgMesh) bgMesh.visible = false;
+                this.forcedBgVisible = false;
+            } else {
+                // 否则恢复之前的状态
+                if (bgMesh) bgMesh.visible = this.wasBgVisible;
+            }
+
             const wrapper = document.getElementById('canvas-wrapper');
             renderer.setSize(wrapper.clientWidth, wrapper.clientHeight);
 
             camera.aspect = wrapper.clientWidth / wrapper.clientHeight;
             camera.updateProjectionMatrix();
+            updateBackgroundSize();
+            updateBackgroundUV();
+            const starToggle = document.getElementById('starfieldToggle');
+            if (starToggle && starToggle.checked && !currentBgType) {
+                setStarfieldState(true);
+            }
             renderer.render(scene, camera);
         }
     };
@@ -6855,6 +6976,12 @@
     init3D();
     initDragAndDrop();
     initResizeHandle();
+    if (document.getElementById('starfieldToggle').checked) {
+        // 稍微延迟一点点，确保 init3D 中的材质和纹理都准备好了
+        setTimeout(() => {
+            setStarfieldState(true);
+        }, 100);
+    }
     setTimeout(() => {
         window.dispatchEvent(new Event('resize'));
     }, 100);
