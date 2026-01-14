@@ -13,7 +13,7 @@
     <style>
         :root {
             /* Apple Dark Mode Palette */
-            --bg-color: #000000;
+            --bg-color: #0b0c15;
             --glass-panel: rgba(30, 30, 30, 0.65);
             --glass-header: rgba(44, 44, 46, 0.75);
             --glass-border: rgba(255, 255, 255, 0.12);
@@ -387,7 +387,7 @@
         /* --- 下半部分可视化区域 --- */
         #visualizer-section {
             flex: 1;
-            background: #000;
+            background: radial-gradient(circle at center, #1b2735 0%, #000000 100%);
             display: flex;
             justify-content: center;
             align-items: center;
@@ -423,7 +423,10 @@
             display: flex; align-items: center; gap: 10px;
             font-size: 11px; font-weight: 500; color: var(--text-muted);
         }
-        .slider-group span { min-width: 60px; text-align: right; }
+        ..slider-group > span {
+            min-width: 60px;
+            text-align: right;
+        }
 
         /* --- 重写 Range Slider (macOS 风格) --- */
         input[type=range] {
@@ -749,6 +752,76 @@
             flex-direction: column !important;
         }
 
+        /* --- 重构后的 iOS 开关样式 (Fixed) --- */
+        .ios-switch {
+            position: relative;
+            display: inline-block;
+            width: 40px;  /* 你可以在这里随意修改宽度，例如改成 40px */
+            height: 18px;
+            vertical-align: middle;
+            margin-left: 8px;
+
+            /* 如果你希望它能随父容器挤压而缩小，请注释掉下面这行；
+               但通常建议保留它，以免开关变形 */
+            flex-shrink: 0;
+        }
+
+        /* 隐藏原始 Checkbox */
+        .ios-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+            position: absolute;
+            margin: 0;
+        }
+
+        /* 轨道 (背景) */
+        .ios-switch .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0; /* 这里的 left/right:0 确保了 slider 永远填满父容器 */
+            background-color: rgba(255, 255, 255, 0.2);
+            transition: background-color 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-sizing: border-box; /* 确保边框包含在尺寸内 */
+        }
+
+        /* 旋钮 (圆球) */
+        .ios-switch .slider:before {
+            position: absolute;
+            content: "";
+            height: 14px;
+            width: 14px;
+
+            /* 初始状态：靠左 */
+            left: 1px;
+            bottom: 1px;
+
+            background-color: white;
+            /* 改用 left 属性进行过渡，或者使用 calc 配合 transform */
+            transition: left 0.3s cubic-bezier(0.4, 0.0, 0.2, 1), transform 0.3s;
+            border-radius: 50%;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        /* 选中状态 - 轨道变色 */
+        .ios-switch input:checked + .slider {
+            background-color: var(--accent-green);
+            border-color: transparent;
+        }
+
+        /* 选中状态 - 旋钮移动 (核心修复) */
+        .ios-switch input:checked + .slider:before {
+            /* 旧代码: transform: translateX(44px); -> 错误，会飞出去
+               新代码: 直接让他跑到右边，减去球宽(14px)和右边距(1px)
+            */
+            left: calc(100% - 15px); /* 100% - 球宽14px - 边距1px */
+
+            /* 移除 translateX，因为我们已经用 left 重新定位了 */
+            transform: none;
+        }
+
         /* 色块样式 */
         .color-swatch {
             width: 80%;
@@ -882,7 +955,7 @@
                 <span class="logo-text title-main">MIDI</span>
                 <span class="logo-text title-sub">Visualizer</span>
             </div>
-            <span class="version-tag">v1.4.0</span>
+            <span class="version-tag">v1.5.0</span>
         </div>
 
         <div class="toolbar-separator"></div>
@@ -1078,6 +1151,14 @@
         <input type="range" id="zSpaceSlider" min="0" max="200" value="5">
     </div>
 
+    <div class="slider-group" style="margin-left: 15px; border-left: 1px solid rgba(255,255,255,0.1); padding-left: 15px;">
+        <span>Stars:</span>
+        <label class="ios-switch" title="显示/隐藏星空">
+            <input type="checkbox" id="starfieldToggle" checked>
+            <span class="slider"></span>
+        </label>
+    </div>
+
     <div class="slider-group">
         <span>Shape:</span>
         <select id="noteShapeSelect" style="background:#333; color:#fff; border:1px solid #555; border-radius:3px; padding:2px; max-width: 100px;">
@@ -1243,11 +1324,18 @@
 <div id="version-modal" style="display:none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 6000; justify-content: center; align-items: center;">
     <div class="modal-content" style="width: 400px !important;">
         <h3 style="border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 15px;">
-            MIDI Visualizer <span style="font-size: 12px; color: #888; font-weight: normal;">v1.4.0</span>
+            MIDI Visualizer <span style="font-size: 12px; color: #888; font-weight: normal;">v1.5.0</span>
         </h3>
 
         <div style="height: 250px; overflow-y: auto; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px; margin-bottom: 20px;">
-            <p style="color: #aaa; font-size: 12px; margin-top: 0;">2026-01-14 1.4.0 (Current)</p>
+            <p style="color: #aaa; font-size: 12px; margin-top: 0;">2026-01-15 1.5.0 (Current)</p>
+            <ul style="padding-left: 20px; color: #ddd; line-height: 1.6;">
+                <li>新增：3D 星空背景 (Starfield)，支持 UI 开关控制</li>
+                <li>优化：快捷键指南、视角参数折叠状态记忆</li>
+                <li>修复：Windows 系统浏览器下变速/变调问题</li>
+            </ul>
+
+            <p style="color: #aaa; font-size: 12px; margin-top: 0;">2026-01-14 1.4.0</p>
             <ul style="padding-left: 20px; color: #ddd; line-height: 1.6;">
                 <li>新增：颜色选择器</li>
                 <li>新增：高光样式调节</li>
@@ -1437,6 +1525,10 @@
     let bgTexture = null;
     let bgImageAspect = 1;
     let customGeometry = null;
+
+    let sharedAudioCtx = null;
+    let starMesh = null; // 全局星星对象
+
     let currentHighlightColor = new THREE.Color(1, 1, 1);
     let currentHighlightWidth = 50.0;
 
@@ -1453,6 +1545,27 @@
     let previewAnimationId = null;
 
     let tempLoadedMaterial = null;
+
+    function setStarfieldState(visible) {
+        // 1. 设置 3D 星星可见性
+        if (starMesh) starMesh.visible = visible;
+
+        // 2. 同步 UI 开关状态
+        const toggle = document.getElementById('starfieldToggle');
+        if (toggle) toggle.checked = visible;
+
+        // 3. 切换背景颜色 (开启=星空渐变，关闭=纯黑)
+        const vizSection = document.getElementById('visualizer-section');
+        if (vizSection) {
+            if (visible) {
+                // 开：显示深蓝星空渐变
+                vizSection.style.background = "radial-gradient(circle at center, #1b2735 0%, #000000 100%)";
+            } else {
+                // 关：恢复纯黑背景 (防止在导入图片时，边缘有蓝色底色)
+                vizSection.style.background = "#000000";
+            }
+        }
+    }
 
     const STATE = {
         isPlaying: false,
@@ -2035,6 +2148,52 @@
         document.getElementById('val-contrast').innerText = BG_STATE.contrast + '%';
 
         document.getElementById('bg-fit').value = BG_STATE.fit;
+    }
+
+    // ✨ 新增：创建星空函数 (带圆形光晕贴图)
+    function initStarfield() {
+        const starGeo = new THREE.BufferGeometry();
+        const starCount = 40000; // 星星数量
+        const posArray = new Float32Array(starCount * 3);
+
+        for(let i = 0; i < starCount * 3; i++) {
+            posArray[i] = (Math.random() - 0.5) * 2000;
+        }
+
+        starGeo.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+
+        // 🎨 1. 用代码画一个圆形的渐变贴图 (无需外部图片)
+        const canvas = document.createElement('canvas');
+        canvas.width = 32;
+        canvas.height = 32;
+        const ctx = canvas.getContext('2d');
+
+        // 创建径向渐变：中间白 -> 边缘透明
+        const gradient = ctx.createRadialGradient(16, 16, 0, 16, 16, 16);
+        gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');   // 中心最亮
+        gradient.addColorStop(0.2, 'rgba(255, 255, 255, 0.8)'); // 核心光晕
+        gradient.addColorStop(0.5, 'rgba(255, 255, 255, 0.2)'); // 外部光晕
+        gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');          // 边缘完全透明
+
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, 32, 32);
+
+        const starTexture = new THREE.CanvasTexture(canvas);
+
+        // 🎨 2. 设置材质
+        const starMat = new THREE.PointsMaterial({
+            size: 3.0,             // 稍微调大一点，因为边缘是透明的
+            map: starTexture,      // ✅ 应用刚才画的圆形贴图
+            color: 0xffffff,
+            transparent: true,     // 必须开启透明
+            opacity: 0.9,
+            sizeAttenuation: true, // 远小近大
+            depthWrite: false,     // ✅ 关键：防止透明粒子相互遮挡产生黑边
+            blending: THREE.AdditiveBlending // ✅ 关键：叠加混合模式，让星星看起来更亮、更像发光体
+        });
+
+        starMesh = new THREE.Points(starGeo, starMat);
+        scene.add(starMesh);
     }
 
     function deleteTrackContext(track) {
@@ -2969,6 +3128,22 @@
             // --- 3. 重置视角 ---
             ViewMgr.reset();
 
+            const starToggle = document.getElementById('starfieldToggle');
+            if (starToggle) {
+                // 初始化：默认开启
+                setStarfieldState(true);
+
+                starToggle.addEventListener('change', (e) => {
+                    setStarfieldState(e.target.checked);
+                });
+            }
+
+            setStarfieldState(true);
+
+            requestAnimationFrame(() => {
+                onResize();
+            });
+
             console.log("已清除视觉效果及视角 (可按 Ctrl+Z 撤回)");
         }
     });
@@ -3298,11 +3473,11 @@
         renderer = new THREE.WebGLRenderer({
             antialias: true,
             powerPreference: "high-performance",
-            alpha: false
+            alpha: true
         });
 
         renderer.outputEncoding = THREE.sRGBEncoding;
-        renderer.setClearColor(0x000000, 1);
+        renderer.setClearColor(0x000000, 0);
         renderer.setSize(width, height);
         renderer.setPixelRatio(window.devicePixelRatio);
         wrapper.appendChild(renderer.domElement);
@@ -3409,6 +3584,8 @@
         bgMesh.renderOrder = -999;
 
         camera.add(bgMesh);
+
+        initStarfield();
 
         updateBackgroundSize();
 
@@ -3552,16 +3729,12 @@
         updateBackgroundUV();
     }
 
-    // 修改后的 onResize：支持 'fast' 模式
-    // 🔥 终极优化版 onResize：支持 'drag' 模式 (只拉伸不重绘)
+    // 🔥 核心修改：动态尺寸调整逻辑
     function onResize(source) {
         // 1. 录制时禁止调整
         if (ExportMgr && ExportMgr.isRecording) return;
 
-        // 判断来源：如果是拖动把手传入的 'drag' 字符串，则开启极速模式
         const isDrag = (source === 'drag');
-
-        // --- Part A: 3D 可视化区域 ---
         const container = document.getElementById('visualizer-section');
         const wrapper = document.getElementById('canvas-wrapper');
 
@@ -3569,46 +3742,63 @@
             const availW = container.clientWidth;
             const availH = container.clientHeight;
 
-            const targetRatio = 16 / 9;
-            const containerRatio = availW / availH;
-
             let finalW, finalH;
 
-            // 计算保持 16:9 的最佳尺寸
-            if (containerRatio > targetRatio) {
-                finalH = availH;
-                finalW = availH * targetRatio;
+            // 🔥 判断逻辑：是否有背景？
+            // 如果有背景纹理 (bgTexture) 且开关是关的(说明不是星空模式)，或者有视频背景
+            // 注意：我们之前的逻辑是“导入背景自动关星空”，所以这里可以用 !starToggle.checked 来辅助判断，
+            // 或者更严谨地：检查 bgImageAspect 是否被设置过且当前不是星空模式。
+
+            // 为了简化，我们直接判断：如果 bgMesh 可见 且 不是星空模式（假设星空模式时我们希望铺满）
+            // 但用户需求是“导入背景情况下”，所以我们判断 bgImageAspect 是否有效且不等于默认值
+
+            const hasImportedBg = currentBgType !== null; // 之前定义的全局变量
+
+            if (hasImportedBg) {
+                // === 模式 A: 适应背景比例 (Fit Mode) ===
+                // 使用导入素材的比例 (bgImageAspect)
+                const targetRatio = bgImageAspect;
+                const containerRatio = availW / availH;
+
+                if (containerRatio > targetRatio) {
+                    // 容器更宽，以高度为准
+                    finalH = availH;
+                    finalW = availH * targetRatio;
+                } else {
+                    // 容器更高，以宽度为准
+                    finalW = availW;
+                    finalH = availW / targetRatio;
+                }
             } else {
+                // === 模式 B: 铺满整个区域 (Fill Mode) ===
+                // 此时无背景（或只有星空），直接填满容器
                 finalW = availW;
-                finalH = availW / targetRatio;
+                finalH = availH;
             }
 
+            // 确保不为 0
             finalW = Math.max(2, Math.floor(finalW));
             finalH = Math.max(2, Math.floor(finalH));
 
-            // 1. 设置容器尺寸 (CSS)
+            // 2. 应用尺寸
             wrapper.style.width = finalW + 'px';
             wrapper.style.height = finalH + 'px';
 
             if (camera && renderer) {
                 if (isDrag) {
-                    // 🔥🔥🔥 核心魔法：拖动时只改 CSS，不改显存！🔥🔥🔥
-                    // 我们直接修改 canvas 的 style 宽高，浏览器会自动拉伸画面。
-                    // 这样避免了 WebGL 上下文重置带来的“黑屏闪烁”。
+                    // 拖拽时只改 CSS
                     renderer.domElement.style.width = finalW + 'px';
                     renderer.domElement.style.height = finalH + 'px';
                 } else {
-                    // 🛑 松手后/窗口调整时：执行真正的 WebGL Resize
-                    camera.aspect = targetRatio;
+                    // 松手/窗口改变时真正重置
+                    camera.aspect = finalW / finalH; // 🔥 关键：宽高比跟随画布
                     camera.updateProjectionMatrix();
 
-                    renderer.setSize(finalW, finalH); // 这步最耗时，松手再做
-
-                    // 确保 style 也同步 (防止 Three.js 内部逻辑覆盖)
+                    renderer.setSize(finalW, finalH);
                     renderer.domElement.style.width = finalW + 'px';
                     renderer.domElement.style.height = finalH + 'px';
 
-                    // 重置模糊缓冲区 (只有松手才做)
+                    // 同步模糊缓冲区
                     if (blurRtX) blurRtX.setSize(finalW, finalH);
                     if (blurRtY) blurRtY.setSize(finalW, finalH);
                     if (blurMatX) blurMatX.uniforms.uResolution.value.set(finalW, finalH);
@@ -3620,9 +3810,7 @@
             updateGridBackground();
         }
 
-        // --- Part B: 轨道区域 ---
-        // 垂直调整高度时，宽没变，所以不需要重算 autoFitZoom (省流！)
-        // 只有非 Drag 状态（比如浏览器窗口变宽了）才需要重算
+        // 轨道区域调整保持不变
         if (!isDrag && STATE.totalDuration > 0) {
             autoFitZoom(STATE.totalDuration);
             updatePlayhead();
@@ -3807,6 +3995,15 @@
             // 读取成功后，应用到场景
             applyBackgroundSource(currentBgBase64, currentBgType);
 
+            // ✨ 新增：导入背景后，自动关闭星空
+            const starToggle = document.getElementById('starfieldToggle');
+            if (starToggle) {
+                starToggle.checked = false; // UI 变关
+                if (starMesh) starMesh.visible = false; // 3D 变关
+            }
+
+            setStarfieldState(false);
+
             // 3. 🔥 加入历史记录
             HistoryMgr.add({
                 type: 'change_background',
@@ -3817,11 +4014,15 @@
             });
 
             console.log("背景已更换 (可撤回)");
+
+            requestAnimationFrame(() => {
+                onResize();
+            });
         };
         reader.readAsDataURL(file);
     }
 
-    // 2. 🔥 新增：通用的应用背景逻辑 (支持 Blob URL 或 Base64)
+    // 🔥 修复：将 onResize 移入加载回调中，确保获得正确的图片长宽比
     function applyBackgroundSource(url, type) {
         const loader = new THREE.TextureLoader();
 
@@ -3840,6 +4041,11 @@
                 bgMesh.visible = true;
                 updateBackgroundUV();
             }
+
+            // ✨ 关键修复：图片加载完、长宽比更新后，再触发一次 Resize
+            requestAnimationFrame(() => {
+                onResize();
+            });
         };
 
         if (type === 'image') {
@@ -3856,7 +4062,6 @@
             video.loop = true;
             video.muted = true;
             video.playsInline = true;
-            // 必须静音并自动播放才能作为纹理
             video.play().then(() => {
                 const aspect = video.videoWidth / video.videoHeight;
                 bgVideoElement = video;
@@ -3893,6 +4098,14 @@
                 if (e.target === versionModal) {
                     versionModal.style.display = 'none';
                 }
+            });
+        }
+
+        const starToggle = document.getElementById('starfieldToggle');
+        if (starToggle) {
+            starToggle.addEventListener('change', (e) => {
+                // 🔥 修复：调用封装好的函数，这样才能同时切换 3D 星星和 DOM 背景色
+                setStarfieldState(e.target.checked);
             });
         }
 
@@ -5411,7 +5624,16 @@
             const existingTrack = STATE.tracks.find(t => t.type === 'audio');
             // 如果存在旧轨道，保存它的数据；如果不存在，则为 null
             const oldTrackData = existingTrack ? serializeTrack(existingTrack) : null;
-            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            // 🔥🔥🔥 修复开始：复用全局 AudioContext 🔥🔥🔥
+            if (!sharedAudioCtx) {
+                sharedAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            // 确保 Context 是运行状态 (浏览器有时会为了省电暂停它)
+            if (sharedAudioCtx.state === 'suspended') {
+                await sharedAudioCtx.resume();
+            }
+            const audioCtx = sharedAudioCtx;
+            // 🔥🔥🔥 修复结束 🔥🔥🔥
 
             const arrayBuffer = await file.arrayBuffer();
             // 1. 原始解码
@@ -5449,6 +5671,9 @@
 
             const url = URL.createObjectURL(file);
             DOM.audio.src = url;
+
+            DOM.audio.playbackRate = 1.0;
+            DOM.audio.preservesPitch = true;
 
             // 🔥 关键修正：因为我们切掉了开头的静音，HTML5 Audio 播放时需要跳过那段静音
             // 我们计算一下切掉了多少秒
@@ -5843,6 +6068,10 @@
     // ==========================================
     function animate() {
         requestAnimationFrame(animate);
+        if (starMesh){
+            starMesh.rotation.y += 0.0002;
+            starMesh.rotation.x += 0.000005
+        }
 
         if (STATE.isPlaying) {
             const now = performance.now();
