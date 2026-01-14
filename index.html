@@ -749,6 +749,37 @@
             flex-direction: column !important;
         }
 
+        /* 色块样式 */
+        .color-swatch {
+            width: 80%;
+            aspect-ratio: 1; /* 正方形 */
+            border-radius: 50%; /* <-- 改为 50% 即为圆形 */
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: transform 0.1s, border-color 0.1s;
+            position: relative;
+        }
+
+        .color-swatch:hover {
+            transform: scale(1.1);
+            z-index: 2;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+        }
+
+        .color-swatch.active {
+            border-color: #fff;
+            box-shadow: 0 0 0 2px var(--accent-blue); /* 双重边框选中效果 */
+        }
+
+        /* 隐藏原生的颜色输入框，但保留点击区域（如果需要的话，或者直接移除） */
+        .color-trigger-btn {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            border: 1px solid rgba(255,255,255,0.3);
+            cursor: pointer;
+        }
+
     </style>
 
     <script type="importmap">
@@ -769,7 +800,6 @@
     <div class="menu-separator"></div>
     <div class="menu-item" id="menu-color">
         设置编组颜色
-        <input type="color" id="group-color-picker" style="opacity:0; position:absolute; left:0; width:100%; height:100%; cursor:pointer;">
     </div>
 </div>
 
@@ -852,7 +882,7 @@
                 <span class="logo-text title-main">MIDI</span>
                 <span class="logo-text title-sub">Visualizer</span>
             </div>
-            <span class="version-tag">v1.3.0</span>
+            <span class="version-tag">v1.4.0</span>
         </div>
 
         <div class="toolbar-separator"></div>
@@ -892,9 +922,8 @@
             </svg>
         </button>
 
-        <button class="btn btn-accent" id="btn-highlight-color" style="position:relative; overflow:hidden;">
-            高光颜色
-            <input type="color" id="highlightColorInput" value="#ffffff" style="position:absolute; left:0; top:0; width:100%; height:100%; opacity:0; cursor:pointer;">
+        <button class="btn btn-accent" id="btn-highlight-color">
+            高光样式
         </button>
 
         <button class="btn" id="viewSettingsBtn">视角参数</button>
@@ -931,6 +960,44 @@
 
 <div id="visualizer-section">
     <div id="canvas-wrapper">
+        <div id="shortcut-overlay" style="
+            position: absolute;
+            top: 16px;
+            left: 20px; /* 📍 这里设为 left，与右边的 right:20px 对称 */
+            background: rgba(0,0,0,0.7);
+            padding: 14px;
+            border-radius: 8px;
+            backdrop-filter: blur(8px);
+            pointer-events: none; /* 让鼠标穿透，不影响操作 */
+            border: 1px solid rgba(255,255,255,0.1);
+            font-family: 'SF Mono', 'Menlo', monospace;
+            font-size: 11px;
+            line-height: 1.6;
+            color: #ddd;
+            z-index: 100;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+        ">
+            <div id="shortcut-header" style="font-weight:700; color:#fff; border-bottom:1px solid rgba(255,255,255,0.2); margin-bottom:8px; padding-bottom:4px; cursor: pointer; pointer-events: auto;">
+                快捷键指南
+            </div>
+
+            <div id="shortcut-content" style="display: grid; grid-template-columns: 1fr auto; gap: 4px 20px;">
+                <span style="color:#aaa;">播放 / 暂停</span>      <span style="color:#30d158; font-weight:700;">Space</span>
+                <span style="color:#aaa;">Solo / Mute</span>      <span style="color:#30d158; font-weight:700;">S / M</span>
+                <span style="color:#aaa;">删除轨道</span>        <span style="color:#ff453a;">Del / Backspace</span>
+                <span style="color:#aaa;">撤销操作</span>        <span style="color:#0a84ff;">Ctrl/Cmd + Z</span>
+                <span style="color:#aaa;">重做操作</span>        <span style="color:#0a84ff;">Ctrl/Cmd + Shift + Y</span>
+                <span style="color:#aaa;">保存工程</span>        <span style="color:#ffd60a;">Ctrl/Cmd + S</span>
+                <span style="color:#aaa;">另存工程</span>        <span style="color:#ffd60a;">Ctrl/Cmd + Shift + S</span>
+
+                <div style="grid-column: span 2; height:1px; background:rgba(255,255,255,0.1); margin:4px 0;"></div>
+
+                <span style="color:#aaa;">视角平移</span>        <span style="color:#bf5af2;">Ctrl/Cmd + 拖拽</span>
+                <span style="color:#aaa;">视角重置</span>        <span style="color:#bf5af2;">Ctrl/Cmd + 双击</span>
+                <span style="color:#aaa;">多选 / 连选</span>      <span>Ctrl / Shift</span>
+            </div>
+        </div>
+
         <div id="viz-overlay" style="
     position: absolute;
     top: 16px;
@@ -949,38 +1016,41 @@
     z-index: 100;
     text-shadow: 0 1px 2px rgba(0,0,0,0.8);
 ">
-            <div style="font-weight:700; color:#fff; border-bottom:1px solid rgba(255,255,255,0.2); margin-bottom:8px; padding-bottom:4px; display:flex; justify-content:space-between;">
+            <div id="viz-header" style="font-weight:700; color:#fff; border-bottom:1px solid rgba(255,255,255,0.2); margin-bottom:8px; padding-bottom:4px; display:flex; justify-content:space-between; cursor: pointer; pointer-events: auto;">
                 <span>视角参数</span>
                 <span style="color:#0a84ff;">● 实时</span>
             </div>
 
-            <div style="display:flex; justify-content:space-between;">
-                <span style="color:#aaa;">相机距离 (Zoom)</span>
-                <span id="hud-radius" style="color:#fff; font-weight:bold;">--</span>
-            </div>
+            <div id="viz-content">
 
-            <div style="margin:6px 0; border-top:1px dashed rgba(255,255,255,0.1);"></div>
+                <div style="display:flex; justify-content:space-between;">
+                    <span style="color:#aaa;">相机距离 (Zoom)</span>
+                    <span id="hud-radius" style="color:#fff; font-weight:bold;">--</span>
+                </div>
 
-            <div style="color:#0a84ff; font-weight:600; margin-bottom:2px;">视角旋转 (Rotation)</div>
-            <div style="display:flex; justify-content:space-between; padding-left:8px;">
-                <span style="color:#888;">水平 (θ)</span>
-                <span id="hud-theta" style="color:#ff6b6b;">0°</span>
-            </div>
-            <div style="display:flex; justify-content:space-between; padding-left:8px;">
-                <span style="color:#888;">垂直 (φ)</span>
-                <span id="hud-phi" style="color:#30d158;">0°</span>
-            </div>
+                <div style="margin:6px 0; border-top:1px dashed rgba(255,255,255,0.1);"></div>
 
-            <div style="margin:6px 0; border-top:1px dashed rgba(255,255,255,0.1);"></div>
+                <div style="color:#0a84ff; font-weight:600; margin-bottom:2px;">视角旋转 (Rotation)</div>
+                <div style="display:flex; justify-content:space-between; padding-left:8px;">
+                    <span style="color:#888;">水平 (θ)</span>
+                    <span id="hud-theta" style="color:#ff6b6b;">0°</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; padding-left:8px;">
+                    <span style="color:#888;">垂直 (φ)</span>
+                    <span id="hud-phi" style="color:#30d158;">0°</span>
+                </div>
 
-            <div style="color:#30d158; font-weight:600; margin-bottom:2px;">视角平移 (Panning)</div>
-            <div style="display:flex; justify-content:space-between; padding-left:8px;">
-                <span style="color:#888;">X 平移</span>
-                <span id="hud-pan-x" style="color:#5e5ce6;">0</span>
-            </div>
-            <div style="display:flex; justify-content:space-between; padding-left:8px;">
-                <span style="color:#888;">Y 平移</span>
-                <span id="hud-pan-y" style="color:#5e5ce6;">0</span>
+                <div style="margin:6px 0; border-top:1px dashed rgba(255,255,255,0.1);"></div>
+
+                <div style="color:#30d158; font-weight:600; margin-bottom:2px;">视角平移 (Panning)</div>
+                <div style="display:flex; justify-content:space-between; padding-left:8px;">
+                    <span style="color:#888;">X 平移</span>
+                    <span id="hud-pan-x" style="color:#5e5ce6;">0</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; padding-left:8px;">
+                    <span style="color:#888;">Y 平移</span>
+                    <span id="hud-pan-y" style="color:#5e5ce6;">0</span>
+                </div>
             </div>
         </div>
     </div>
@@ -1038,22 +1108,22 @@
             <input type="range" id="bg-opacity" min="0" max="1" step="0.05" value="0.6" style="width:100%">
         </div>
 
-        <div class="form-group">
+        <div class="form-group" style="margin-bottom: 15px;">
             <label>模糊度 (Blur): <span id="val-blur">0px</span></label>
             <input type="range" id="bg-blur" min="0" max="20" step="1" value="0" style="width:100%">
         </div>
 
-        <div class="form-group">
+        <div class="form-group" style="margin-bottom: 15px;">
             <label>亮度 (Brightness): <span id="val-bright">100%</span></label>
             <input type="range" id="bg-brightness" min="0" max="200" step="5" value="100" style="width:100%">
         </div>
 
-        <div class="form-group">
+        <div class="form-group" style="margin-bottom: 15px;">
             <label>对比度 (Contrast): <span id="val-contrast">100%</span></label>
             <input type="range" id="bg-contrast" min="0" max="200" step="5" value="100" style="width:100%">
         </div>
 
-        <div class="form-group">
+        <div class="form-group" style="margin-bottom: 15px;">
             <label>填充模式 (Fit Mode)</label>
             <select id="bg-fit" style="width:100%; padding:5px; background:#111; color:#fff; border:1px solid #555;">
                 <option value="cover">Cover (铺满裁剪)</option>
@@ -1173,11 +1243,23 @@
 <div id="version-modal" style="display:none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 6000; justify-content: center; align-items: center;">
     <div class="modal-content" style="width: 400px !important;">
         <h3 style="border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 15px;">
-            MIDI Visualizer <span style="font-size: 12px; color: #888; font-weight: normal;">v1.3.0</span>
+            MIDI Visualizer <span style="font-size: 12px; color: #888; font-weight: normal;">v1.4.0</span>
         </h3>
 
         <div style="height: 250px; overflow-y: auto; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px; margin-bottom: 20px;">
-            <p style="color: #aaa; font-size: 12px; margin-top: 0;">2026-01-14 1.3.0 (Current)</p>
+            <p style="color: #aaa; font-size: 12px; margin-top: 0;">2026-01-14 1.4.0 (Current)</p>
+            <ul style="padding-left: 20px; color: #ddd; line-height: 1.6;">
+                <li>新增：颜色选择器</li>
+                <li>新增：高光样式调节</li>
+                <li>新增：全局 ESC 键可关闭所有弹窗</li>
+                <li>新增：快捷键提示</li>
+                <li>优化：快捷键提示与视角参数支持折叠</li>
+                <li>优化：统一了高光渲染算法，移除强制光晕，支持更宽的调节范围 (0-100)</li>
+                <li>优化：播放同步逻辑，修复切换标签页后播放线跳变/不同步的问题</li>
+                <li>修复：修正缩略图与轨道颜色一致性</li>
+                <li>修复：删除轨道后调节滑块会导致“僵尸音符”复活的 Bug</li>
+            </ul>
+            <p style="color: #aaa; font-size: 12px; margin-top: 0;">2026-01-14 1.3.0</p>
             <ul style="padding-left: 20px; color: #ddd; line-height: 1.6;">
                 <li>新增：左上角版本信息查看入口</li>
                 <li>新增：支持音频开头的静音自动剪切</li>
@@ -1233,6 +1315,44 @@
     </div>
 </div>
 
+<div id="color-picker-modal" style="display:none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 9999; justify-content: center; align-items: center;">
+    <div class="modal-content">
+        <h3 style="margin-top:0; margin-bottom: 15px; font-size: 16px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px;">
+            选择颜色 <span id="cp-target-name" style="font-size: 11px; color: #888; margin-left: 8px;"></span>
+        </h3>
+
+        <div id="cp-grid" style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; margin-bottom: 20px;">
+        </div>
+
+        <div class="form-group" style="display: flex; gap: 10px; align-items: center;">
+            <div id="cp-preview" style="width: 36px; height: 36px; border-radius: 6px; background: #fff; border: 1px solid rgba(255,255,255,0.2);"></div>
+            <div style="flex: 1;">
+                <label style="margin-bottom: 2px;">Hex Code</label>
+                <input type="text" id="cp-hex-input" value="#FFFFFF" style="font-family: monospace; letter-spacing: 1px;">
+            </div>
+        </div>
+
+        <div id="cp-extra-controls" style="display:none; margin-top: 20px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 20px;">
+            <div style="margin-bottom: 15px;">
+                <label style="margin-bottom: 8px; display: block;">高光效果预览</label>
+                <div style="height: 80px; background: #1a1a1a; border-radius: 6px; overflow:hidden; border: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: center; align-items: center;">
+                    <canvas id="cp-3d-preview-canvas"></canvas>
+                </div>
+            </div>
+
+            <div class="slider-group">
+                <span>高光宽度: <span id="cp-width-val" style="font-family: monospace;">1.0</span></span>
+                <input type="range" id="cp-width-slider" min="0.1" max="100.0" step="0.1" value="50.0">
+            </div>
+        </div>
+
+        <div class="modal-buttons">
+            <button class="btn" id="cp-cancel-btn">取消</button>
+            <button class="btn btn-primary" id="cp-confirm-btn">确定</button>
+        </div>
+    </div>
+</div>
+
 <audio id="audioElement"></audio>
 
 <script type="x-shader/x-vertex" id="vertexShader">
@@ -1277,34 +1397,25 @@
     varying vec3 vWorldPosition;
     varying vec2 vUv;
 
-    uniform float uPlayheadX;
-    uniform float uGlowRadius;
+    // 只需要这两个颜色：基础暗色 和 最终高光色
     uniform vec3 uBaseColor;
-    uniform vec3 uActiveColor;
-    uniform vec3 uHighlightColor; // 必须保留
+    uniform vec3 uHighlightColor;
 
-   void main() {
-        // 计算距离
+    uniform float uPlayheadX;
+    uniform float uHighlightWidth;
+
+    void main() {
+        // 1. 计算距离
         float dist = abs(vWorldPosition.x - uPlayheadX);
 
-        // 1. 基础音符颜色 (保持不变)
-        float glowFactor = 1.0 - smoothstep(0.0, uGlowRadius, dist);
-        float intensity = pow(glowFactor, 3.0);
-        vec3 originalNoteColor = mix(uBaseColor, uActiveColor, intensity);
+        // 2. 核心算法 (高斯衰减)
+        // 使用 uHighlightWidth 直接控制衰减速率
+        // 宽度越大，分母越大，衰减越慢，光越宽
+        float intensity = exp(-dist * 2.0 / max(0.1, uHighlightWidth));
 
-        // ============================================================
-        // 🔥🔥 调整宽度的地方 🔥🔥
-        // ============================================================
-
-        // 这里的数值越小，颜色扩散得越宽！
-        float beamWidth = 0.15;
-
-        // 计算混合因子 (指数衰减，自然过渡)
-        float mixFactor = exp(-dist * beamWidth);
-
-        // 2. 执行混合
-        // 直接用 mix 替换颜色，不进行 add (高亮叠加)，所以不会刺眼
-        vec3 finalColor = mix(originalNoteColor, uHighlightColor, mixFactor);
+        // 3. 直接混合：从 BaseColor 到 HighlightColor
+        // 没有中间态，没有光晕，干净利落
+        vec3 finalColor = mix(uBaseColor, uHighlightColor, intensity);
 
         gl_FragColor = vec4(finalColor, 1.0);
     }
@@ -1327,6 +1438,7 @@
     let bgImageAspect = 1;
     let customGeometry = null;
     let currentHighlightColor = new THREE.Color(1, 1, 1);
+    let currentHighlightWidth = 50.0;
 
     // 🔥 新增：双通道模糊专用变量
     let blurScene, blurCamera;
@@ -1589,9 +1701,298 @@
                         track.refreshColor();
                     }
                     break;
+
+                case 'change_group_color':
+                    const changes = cmd.changes; // 这是一个数组，包含所有受影响的组信息
+                    changes.forEach(item => {
+                        const group = STATE.groups[item.groupId];
+                        if (group) {
+                            // 恢复旧颜色 或 应用新颜色
+                            group.color = isUndo ? item.oldColor : item.newColor;
+
+                            // 刷新该组下所有轨道的颜色
+                            group.trackIds.forEach(tid => {
+                                const t = STATE.tracks.find(trk => trk.id === tid);
+                                if (t) t.refreshColor();
+                            });
+                        }
+                    });
+                    break;
             }
         }
     };
+
+    const ColorPickerPreview3D = {
+        canvas: null, renderer: null, scene: null, camera: null, material: null,
+        initialized: false,
+        scanTime: 0,
+
+        init() {
+            if (this.initialized) return;
+            this.canvas = document.getElementById('cp-3d-preview-canvas');
+
+            const width = 360;
+            const height = 80;
+
+            this.renderer = new THREE.WebGLRenderer({ canvas: this.canvas, alpha: true, antialias: true });
+            this.renderer.setSize(width, height);
+            this.renderer.setPixelRatio(window.devicePixelRatio);
+
+            this.scene = new THREE.Scene();
+            this.scene.background = new THREE.Color(0x000000);
+
+            const aspect = width / height;
+            const viewSize = 10;
+            this.camera = new THREE.OrthographicCamera(
+                -viewSize * aspect / 2, viewSize * aspect / 2,
+                viewSize / 2, -viewSize / 2,
+                0.1, 100
+            );
+            this.camera.position.set(0, 0, 10);
+            this.camera.lookAt(0, 0, 0);
+
+            // --- 统一后的 Shader ---
+            this.material = new THREE.ShaderMaterial({
+                uniforms: {
+                    uBaseColor: { value: new THREE.Color(0x222222) },
+                    uHighlightColor: { value: new THREE.Color(0xffffff) },
+                    uHighlightWidth: { value: 50.0 },
+                    uPlayheadX: { value: 0.0 }
+                },
+                vertexShader: `
+                    varying vec3 vWorldPosition;
+                    void main() {
+                        vec4 worldPosition = modelMatrix * instanceMatrix * vec4(position, 1.0);
+                        vWorldPosition = worldPosition.xyz;
+                        gl_Position = projectionMatrix * viewMatrix * worldPosition;
+                    }
+                `,
+                fragmentShader: `
+                    varying vec3 vWorldPosition;
+                    uniform vec3 uBaseColor;
+                    uniform vec3 uHighlightColor;
+                    uniform float uHighlightWidth;
+                    uniform float uPlayheadX;
+
+                    void main() {
+                        float dist = abs(vWorldPosition.x - uPlayheadX);
+
+                        // 与主场景完全一致的算法
+                        float intensity = exp(-dist * 2.0 / max(0.1, uHighlightWidth));
+
+                        vec3 finalColor = mix(uBaseColor, uHighlightColor, intensity);
+                        gl_FragColor = vec4(finalColor, 1.0);
+                    }
+                `,
+            });
+
+            // 创建错落的音符布局
+            const geometry = new THREE.PlaneGeometry(1, 0.6);
+            const count = 20;
+            const mesh = new THREE.InstancedMesh(geometry, this.material, count);
+
+            const dummy = new THREE.Object3D();
+            let index = 0;
+            const rows = [1.5, 0.5, -0.5, -1.5];
+
+            rows.forEach((y) => {
+                let currentX = -8 + Math.random() * 2;
+                while (currentX < 8 && index < count) {
+                    const length = 1.5 + Math.random() * 2.5;
+                    const gap = 0.5 + Math.random() * 1.0;
+                    dummy.position.set(currentX + length / 2, y, 0);
+                    dummy.scale.set(length, 1, 1);
+                    dummy.updateMatrix();
+                    mesh.setMatrixAt(index++, dummy.matrix);
+                    currentX += length + gap;
+                }
+            });
+
+            this.scene.add(mesh);
+            this.initialized = true;
+            this.animate();
+        },
+
+        update(colorHex, widthVal) {
+            if (!this.initialized || !this.material) return;
+
+            const floatWidth = parseFloat(widthVal);
+            this.material.uniforms.uHighlightColor.value.set(colorHex);
+            this.material.uniforms.uHighlightWidth.value = floatWidth;
+        },
+
+        animate() {
+            requestAnimationFrame(() => this.animate());
+            const modal = document.getElementById('color-picker-modal');
+            if (modal && modal.style.display !== 'none' && this.material) {
+                this.scanTime += 0.02;
+                const limit = 6.0;
+                this.material.uniforms.uPlayheadX.value = Math.sin(this.scanTime) * limit;
+                this.renderer.render(this.scene, this.camera);
+            }
+        }
+    };
+
+    // ==========================================
+    // 🎨 通用颜色盘管理器
+    // ==========================================
+    // ==========================================
+    // 🎨 通用颜色盘管理器 (已更新支持扩展控件)
+    // ==========================================
+    const ColorPickerMgr = {
+        modal: document.getElementById('color-picker-modal'),
+        grid: document.getElementById('cp-grid'),
+        input: document.getElementById('cp-hex-input'),
+        preview: document.getElementById('cp-preview'),
+        title: document.getElementById('cp-target-name'),
+
+        // 新增：扩展控件的引用
+        extraControls: document.getElementById('cp-extra-controls'),
+        widthSlider: document.getElementById('cp-width-slider'),
+        widthValDisplay: document.getElementById('cp-width-val'),
+
+        onChange: null,
+        onConfirm: null,
+        // 新增：宽度变化回调
+        onWidthChange: null,
+        tempColor: '#ffffff',
+        // 新增：标记是否处于高光编辑模式
+        isHighlightMode: false,
+
+        presets: [
+            '#ff453a', '#ff9f0a', '#ffd60a', '#30d158', '#64d2ff', '#0a84ff',
+            '#5e5ce6', '#bf5af2', '#ff375f', '#ac8e68', '#98989d', '#86868b',
+            '#ffffff', '#888888', '#555555', '#2a2a2a', '#1c1c1e', '#000000',
+            '#e0aaff', '#9d4edd', '#240046', '#a2d2ff', '#bde0fe', '#ffafcc'
+        ],
+
+        init() {
+            // 1. 初始化 3D 预览引擎
+            ColorPickerPreview3D.init();
+
+            // 2. 生成色块 (保持不变)
+            this.grid.innerHTML = '';
+            this.presets.forEach(color => {
+                const el = document.createElement('div');
+                el.className = 'color-swatch';
+                el.style.backgroundColor = color;
+                el.onclick = () => this.selectColor(color);
+                this.grid.appendChild(el);
+            });
+
+            // 3. 绑定基础事件 (保持不变)
+            document.getElementById('cp-cancel-btn').addEventListener('click', () => this.close());
+            document.getElementById('cp-confirm-btn').addEventListener('click', () => this.confirm());
+            this.input.addEventListener('input', (e) => {
+                const val = e.target.value;
+                if (/^#[0-9A-F]{6}$/i.test(val)) {
+                    this.selectColor(val, false);
+                }
+            });
+            this.modal.addEventListener('click', (e) => {
+                if (e.target === this.modal) this.close();
+            });
+
+            // 4. 新增：绑定滑块事件
+            this.widthSlider.addEventListener('input', (e) => {
+                const val = parseFloat(e.target.value);
+                // 更新显示数值
+                this.widthValDisplay.innerText = val.toFixed(1);
+
+                // 更新 Modal 内的 3D 预览
+                if (this.isHighlightMode) {
+                    ColorPickerPreview3D.update(this.tempColor, val);
+                }
+
+                // 触发外部回调，更新主场景
+                if (this.onWidthChange) {
+                    this.onWidthChange(val);
+                }
+            });
+        },
+
+        /**
+         * 打开颜色盘
+         * @param {string} initialColor - 初始颜色 hex
+         * @param {string} title - 标题后缀
+         * @param {function} onConfirm - 确定回调
+         * @param {function} onChange - 颜色实时预览回调
+         * @param {object} extraConfig - (新增) 额外配置对象 { isHighlight: bool, initialWidth: float, onWidthChange: func }
+         */
+        open(initialColor, title, onConfirm, onChange = null, extraConfig = null) {
+            this.tempColor = initialColor;
+            this.onConfirm = onConfirm;
+            this.onChange = onChange;
+            this.title.innerText = title || "";
+
+            // --- 处理扩展配置 ---
+            if (extraConfig && extraConfig.isHighlight) {
+                this.isHighlightMode = true;
+                // 显示扩展区域
+                this.extraControls.style.display = 'block';
+                // 设置滑块初始值
+                const initWidth = extraConfig.initialWidth || 1.0;
+                this.widthSlider.value = initWidth;
+                this.widthValDisplay.innerText = initWidth.toFixed(1);
+                this.onWidthChange = extraConfig.onWidthChange;
+
+                // 打开时立即更新一次 3D 预览
+                ColorPickerPreview3D.update(this.tempColor, initWidth);
+                // 重新调整渲染器大小以适应容器 (防止首次打开尺寸不对)
+                ColorPickerPreview3D.renderer.setSize(360, 80);
+
+            } else {
+                this.isHighlightMode = false;
+                // 隐藏扩展区域
+                this.extraControls.style.display = 'none';
+                this.onWidthChange = null;
+            }
+            // -----------------------
+
+            this.modal.style.display = 'flex';
+            this.selectColor(initialColor);
+        },
+
+        selectColor(color, updateInput = true) {
+            this.tempColor = color;
+            this.preview.style.backgroundColor = color;
+            if (updateInput) this.input.value = color;
+
+            Array.from(this.grid.children).forEach(child => {
+                // 简单清除 active 状态
+                child.classList.remove('active');
+            });
+
+            // 如果在高光模式，颜色改变时也要更新 3D 预览
+            if (this.isHighlightMode) {
+                ColorPickerPreview3D.update(this.tempColor, this.widthSlider.value);
+            }
+
+            if (this.onChange) {
+                this.onChange(this.tempColor);
+            }
+        },
+
+        confirm() {
+            if (this.onConfirm) {
+                // 如果是高光模式，确认时可能需要把最终宽度也传出去(如果需要记录历史)
+                // 目前只传了颜色，宽度是实时更新的
+                this.onConfirm(this.tempColor);
+            }
+            this.close();
+        },
+
+        close() {
+            this.modal.style.display = 'none';
+            this.onConfirm = null;
+            this.onChange = null;
+            this.onWidthChange = null;
+            this.isHighlightMode = false;
+        }
+    };
+
+    // 在最底部的 initController() 中调用初始化
+    // ColorPickerMgr.init();
 
     const BG_STATE = {
         opacity: 0.6,
@@ -1636,7 +2037,6 @@
         document.getElementById('bg-fit').value = BG_STATE.fit;
     }
 
-    // 🔥 辅助工具：删除单个轨道的完整逻辑 (已修复音频残留问题)
     function deleteTrackContext(track) {
         if (!track) return;
 
@@ -1660,6 +2060,10 @@
                 STATE.activeAudioClip = null;
             }
             c.destroy();
+            const globalIdx = STATE.clips.indexOf(c);
+            if (globalIdx > -1) {
+                STATE.clips.splice(globalIdx, 1);
+            }
         });
         // -------------------------
 
@@ -1739,156 +2143,159 @@
         }
 
         renderUI() {
-            // Header
+            // 1. 创建 Header 容器
             const headerDiv = document.createElement('div');
             headerDiv.className = 'track-header';
-            // 允许相对定位，以便放置编组指示条
             headerDiv.style.position = 'relative';
 
-            // 1. 编组指示条 (左侧色块)
+            // 2. 创建编组指示条
             const groupIndicator = document.createElement('div');
             groupIndicator.className = 'group-indicator';
             groupIndicator.id = `group-ind-${this.id}`;
             headerDiv.appendChild(groupIndicator);
 
-            // 2. 内容
+            // ============================================================
+            // 🔥 修复点：必须先定义 contentDiv，才能操作它
+            // ============================================================
             const contentDiv = document.createElement('div');
+
+            // 3. 设置 HTML 结构 (包含颜色按钮的占位符 .track-color-slot)
             contentDiv.innerHTML = `
-    <div class="track-name" title="${this.name}">${this.name}</div>
-    <div class="track-controls">
-        <input type="color" value="${this.ownColor}" class="track-color-picker">
-        <button class="btn-sm mute-btn" title="Mute">M</button>
-        <button class="btn-sm solo-btn" title="Solo">S</button>
-        <span style="font-size:10px; color:#888;">${this.type.toUpperCase()}</span>
-    </div>
-`;
+                <div class="track-name" title="${this.name}">${this.name}</div>
+                <div class="track-controls">
+                    <div class="track-color-slot"></div>
+                    <button class="btn-sm mute-btn" title="Mute">M</button>
+                    <button class="btn-sm solo-btn" title="Solo">S</button>
+                    <span style="font-size:10px; color:#888;">${this.type.toUpperCase()}</span>
+                </div>
+            `;
+
+            // 4. 将内容加入 Header
             headerDiv.appendChild(contentDiv);
             DOM.headers.appendChild(headerDiv);
 
             this.headerEl = headerDiv;
-
             this.nameEl = headerDiv.querySelector('.track-name');
 
-            // Lane
+            // 5. 创建 Lane (轨道条)
             const laneDiv = document.createElement('div');
             laneDiv.className = 'track-lane';
             laneDiv.id = `lane-${this.id}`;
             DOM.lanes.appendChild(laneDiv);
             this.laneEl = laneDiv;
 
-            // --- 事件绑定 ---
+            // ============================================================
+            // 🔥 颜色按钮逻辑 (ColorPickerMgr)
+            // ============================================================
 
-            // A. 颜色选择器 (设置轨道自己的颜色)
-            // 注意：如果已编组，这个颜色在 Clip 上会被覆盖，但在 UI 上保留
-            const colorInput = headerDiv.querySelector('.track-color-picker');
+            // 创建颜色触发器按钮
+            const colorTrigger = document.createElement('div');
+            colorTrigger.className = 'color-trigger-btn';
+            colorTrigger.style.backgroundColor = this.ownColor;
+            colorTrigger.title = "更改轨道颜色";
 
-            // 🔥 1. 记录点击时的旧颜色
-            let tempOldColor = this.ownColor;
-            colorInput.addEventListener('mousedown', () => {
-                tempOldColor = this.ownColor;
-            });
+            // 关键：找到刚才预留的插槽，把按钮插进去
+            const slot = contentDiv.querySelector('.track-color-slot');
+            if (slot) {
+                slot.appendChild(colorTrigger);
+            }
 
-            // 2. 实时预览
-            colorInput.addEventListener('input', (e) => {
-                this.ownColor = e.target.value;
+            // 绑定事件
+            colorTrigger.addEventListener('mousedown', (e) => e.stopPropagation());
+            colorTrigger.addEventListener('click', (e) => {
+                e.stopPropagation();
 
-                // 🔥【核心修复】如果用户手动修改颜色，强制解除编组颜色锁定
-                if (this.groupId) {
-                    // 1. 如果存在编组数据，从编组的 Set 中移除该轨道 ID
-                    if (STATE.groups[this.groupId] && STATE.groups[this.groupId].trackIds) {
-                        STATE.groups[this.groupId].trackIds.delete(this.id);
+                const oldColor = this.ownColor;
+
+                ColorPickerMgr.open(
+                    this.ownColor,
+                    ` - ${this.name}`,
+                    (finalColor) => {
+                        // Confirm 回调
+                        if (finalColor !== oldColor) {
+                            HistoryMgr.add({
+                                type: 'change_color',
+                                trackId: this.id,
+                                oldColor: oldColor,
+                                newColor: finalColor
+                            });
+                        }
+                    },
+                    (previewColor) => {
+                        // Preview 回调
+                        this.ownColor = previewColor;
+                        colorTrigger.style.backgroundColor = previewColor;
+
+                        // 联动：如果已编组，自动解散
+                        if (this.groupId) {
+                            if (STATE.groups[this.groupId]) {
+                                STATE.groups[this.groupId].trackIds.delete(this.id);
+                            }
+                            this.groupId = null;
+                        }
+                        this.refreshColor();
                     }
-                    // 2. 将该轨道的编组 ID 置空，使其恢复自由身
-                    this.groupId = null;
-                }
-
-                this.refreshColor();
+                );
             });
 
-            // 🔥 3. 修改完成后记录历史
-            colorInput.addEventListener('change', (e) => {
-                HistoryMgr.add({
-                    type: 'change_color',
-                    trackId: this.id,
-                    oldColor: tempOldColor,
-                    newColor: this.ownColor
-                });
-            });
-            // 阻止颜色选择器的点击冒泡，防止触发轨道选中
-            colorInput.addEventListener('mousedown', e => e.stopPropagation());
-            colorInput.addEventListener('click', e => e.stopPropagation());
+            // ============================================================
+            // 下面是原有的选中、Mute、Solo 事件绑定...
+            // ============================================================
 
-            // 在 Track 类的 renderUI 方法中...
-
-// B. 点击选中逻辑 (Left Click)
+            // B. 点击选中逻辑 (Left Click)
             headerDiv.addEventListener('mousedown', (e) => {
-
-                if (e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT') {
+                // ... (保持你原有的选中逻辑不变) ...
+                if (e.target.tagName === 'BUTTON' || e.target.classList.contains('color-trigger-btn')) {
                     return;
                 }
-                // 只响应左键
                 if (e.button !== 0) return;
-
                 // 防止点击颜色选择器或输入框时触发轨道选中
                 if (e.target.tagName === 'INPUT') return;
 
-                // 🔥🔥🔥【新增】阻止默认行为（防止 Shift+Click 选中文本）🔥🔥🔥
                 e.preventDefault();
 
                 if (e.shiftKey) {
-                    // 🔥 情况1：Shift + Click (范围选择)
                     if (STATE.lastSelectedTrackId !== null) {
                         selectTrackRange(STATE.lastSelectedTrackId, this.id);
                     } else {
-                        // 如果还没有锚点，Shift点击就等同于普通点击
                         selectSingleTrack(this.id);
                     }
                 }
                 else if (e.ctrlKey || e.metaKey) {
-                    // 🔥 情况2：Ctrl/Cmd + Click (加选/减选)
                     toggleTrackSelection(this.id);
                 }
                 else {
-                    // 🔥 情况3：普通点击 (单选)
                     selectSingleTrack(this.id);
                 }
             });
 
-            // C. 右键菜单 (Right Click)
+            // C. 右键菜单
             headerDiv.addEventListener('contextmenu', (e) => {
                 e.preventDefault();
-                // 如果右键点击了一个未选中的轨道，先单选它
                 if (!STATE.selectedTrackIds.has(this.id)) {
                     selectSingleTrack(this.id);
                 }
-                // 显示菜单
                 showContextMenu(e.clientX, e.clientY);
             });
 
+            // Mute / Solo 按钮逻辑
             const muteBtn = contentDiv.querySelector('.mute-btn');
             const soloBtn = contentDiv.querySelector('.solo-btn');
 
-            // 找到 renderUI 内部关于 soloBtn 的点击监听并修改
             soloBtn.addEventListener('click', (e) => {
-                e.stopPropagation(); // 阻止触发 headerDiv 的 mousedown
-
-                // 关键点：检查当前轨道是否在选中组里
+                e.stopPropagation();
                 if (STATE.selectedTrackIds.has(this.id)) {
-                    // 如果是，则批量操作所有选中的轨道
                     const targetSoloState = !this.isSoloed;
                     STATE.selectedTrackIds.forEach(id => {
                         const track = STATE.tracks.find(t => t.id === id);
                         if (track) track.setSolo(targetSoloState);
                     });
                 } else {
-                    // 如果点击的是未选中的轨道，只操作它自己
                     this.setSolo(!this.isSoloed);
                 }
-
                 updateAllTracksVisibility();
             });
 
-// 同理修复 muteBtn
             muteBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 if (STATE.selectedTrackIds.has(this.id)) {
@@ -1932,7 +2339,18 @@
         }
 
         clearClips() {
-            this.clips.forEach(c => c.destroy());
+            // 🔥🔥🔥 核心修复：清除 Clip 时，必须同步从全局 STATE.clips 中移除 🔥🔥🔥
+            this.clips.forEach(c => {
+                c.destroy(); // 销毁 DOM 和 3D 资源
+
+                // 从全局缓存中剔除，防止滑块调节时“僵尸复活”
+                const globalIdx = STATE.clips.indexOf(c);
+                if (globalIdx > -1) {
+                    STATE.clips.splice(globalIdx, 1);
+                }
+            });
+
+            // 清空当前轨道的引用
             this.clips = [];
         }
 
@@ -2117,6 +2535,8 @@
                 this.dom.style.borderColor = color;
             }
 
+            this.drawThumbnail();
+
             // 2. 🔥 新增：直接更新 3D 材质颜色 (无需重建)
             if (this.mesh && this.mesh.children.length > 0) {
                 const object = this.mesh.children[0]; // 获取 Group 里的 Mesh/Line
@@ -2227,9 +2647,10 @@
                 uniforms: {
                     uPlayheadX: { value: 0 },
                     uGlowRadius: { value: 35.0 },
-                    uBaseColor: { value: new THREE.Color(this.track.color).multiplyScalar(0.6) },
+                    uBaseColor: { value: new THREE.Color(this.track.color).multiplyScalar(0.8) },
                     uActiveColor: { value: new THREE.Color(this.track.color).multiplyScalar(1.5).addScalar(0.3) },
-                    uHighlightColor: { value: currentHighlightColor }
+                    uHighlightColor: { value: currentHighlightColor },
+                    uHighlightWidth: { value: currentHighlightWidth }
                 },
                 vertexShader: document.getElementById('vertexShader').textContent,
                 fragmentShader: document.getElementById('fragmentShader').textContent,
@@ -2423,6 +2844,28 @@
 
         updateSelectionUI();
     }
+
+    function bindToggle(headerId, contentId, defaultDisplay) {
+        const header = document.getElementById(headerId);
+        const content = document.getElementById(contentId);
+        if (header && content) {
+            header.addEventListener('click', () => {
+                if (content.style.display === 'none') {
+                    content.style.display = defaultDisplay; // 展开
+                    header.style.opacity = '1';
+                } else {
+                    content.style.display = 'none'; // 折叠
+                    header.style.opacity = '0.7'; // 折叠时标题稍微变暗
+                }
+            });
+        }
+    }
+
+    // 绑定右上角 (默认是 block 布局)
+    bindToggle('viz-header', 'viz-content', 'block');
+
+    // 绑定左上角 (默认是 grid 布局)
+    bindToggle('shortcut-header', 'shortcut-content', 'grid');
 
     // 🔥 核心：范围选择逻辑
     function selectTrackRange(startId, endId) {
@@ -3403,6 +3846,7 @@
 
 
     function initController() {
+        ColorPickerMgr.init();
 
         const versionModal = document.getElementById('version-modal');
         const logoBtn = document.getElementById('app-logo');
@@ -3464,29 +3908,129 @@
             btnBg.addEventListener('click', () => inputBg.click());
         }
 
-        // 4. 高光
-        const highlightInput = document.getElementById('highlightColorInput');
-        if (highlightInput) {
-            highlightInput.addEventListener('input', (e) => {
-                const hex = e.target.value;
-                // 更新全局变量
-                if(typeof currentHighlightColor !== 'undefined') {
-                    currentHighlightColor.set(hex);
-                }
-                // 实时更新 Shader
-                STATE.clips.forEach(clip => {
-                    if (clip.mesh && clip.track.type === 'midi') {
-                        clip.mesh.children.forEach(child => {
-                            if (child.material && child.material.uniforms && child.material.uniforms.uHighlightColor) {
-                                child.material.uniforms.uHighlightColor.value.copy(currentHighlightColor);
+        const btnHl = document.getElementById('btn-highlight-color');
+        const hlPreview = document.getElementById('hl-color-preview');
+
+        if (btnHl) {
+            btnHl.addEventListener('click', () => {
+                const curHex = '#' + currentHighlightColor.getHexString();
+
+                ColorPickerMgr.open(
+                    curHex,
+                    " - Playback Highlight",
+                    (finalColor) => {
+                        // 确认回调 (这里不需要做额外操作，因为实时预览已经生效)
+                        // 如果需要支持撤销/重做功能，可以在这里记录最终状态
+                    },
+                    (previewColor) => {
+                        // --- 颜色实时预览回调 ---
+                        currentHighlightColor.set(previewColor);
+                        hlPreview.style.backgroundColor = previewColor;
+
+                        // 遍历所有 Clip 更新 Shader 的颜色 Uniform
+                        STATE.clips.forEach(clip => {
+                            if (clip.mesh && clip.track.type === 'midi') {
+                                clip.mesh.children.forEach(child => {
+                                    if (child.material && child.material.uniforms) {
+                                        child.material.uniforms.uHighlightColor.value.copy(currentHighlightColor);
+                                    }
+                                });
                             }
                         });
+                    },
+                    // ============================================
+                    // 🔥 新增：传入扩展配置对象
+                    // ============================================
+                    {
+                        isHighlight: true, // 标记为高光模式
+                        initialWidth: currentHighlightWidth, // 传入当前全局宽度值
+                        onWidthChange: (newWidth) => {
+                            // --- 宽度实时预览回调 ---
+                            // 1. 更新全局变量
+                            currentHighlightWidth = newWidth;
+
+                            // 2. 遍历所有 Clip 更新 Shader 的宽度 Uniform
+                            STATE.clips.forEach(clip => {
+                                if (clip.mesh && clip.track.type === 'midi') {
+                                    clip.mesh.children.forEach(child => {
+                                        if (child.material && child.material.uniforms) {
+                                            child.material.uniforms.uHighlightWidth.value = currentHighlightWidth;
+                                        }
+                                    });
+                                }
+                            });
+                        }
                     }
-                });
+                );
             });
-        } else {
-            console.warn("未找到高光颜色输入框 (highlightColorInput)，请检查 HTML");
         }
+
+        const menuColorBtn = document.getElementById('menu-color');
+
+        menuColorBtn.addEventListener('click', () => {
+            // 隐藏菜单
+            document.getElementById('context-menu').style.display = 'none';
+
+            // --- 1. 预先计算受影响的编组，并保存它们的“旧颜色” ---
+            // 这一步必须在打开调色盘之前做，因为实时预览会改变当前颜色
+            const affectedGroupsState = [];
+            const affectedGroupIds = new Set();
+
+            STATE.selectedTrackIds.forEach(tid => {
+                const t = STATE.tracks.find(trk => trk.id === tid);
+                if (t && t.groupId) affectedGroupIds.add(t.groupId);
+            });
+
+            affectedGroupIds.forEach(gid => {
+                const group = STATE.groups[gid];
+                if (group) {
+                    affectedGroupsState.push({
+                        groupId: gid,
+                        oldColor: group.color // 🔥 记录此刻的旧颜色
+                    });
+                }
+            });
+
+            // --- 2. 决定调色盘打开时的默认颜色 ---
+            let initialColor = '#ffffff';
+            // 如果有受影响的组，就用第一个组的颜色作为默认值 (解决重置回白色的问题)
+            if (affectedGroupsState.length > 0) {
+                initialColor = affectedGroupsState[0].oldColor;
+            }
+
+            // --- 3. 打开调色盘 ---
+            ColorPickerMgr.open(
+                initialColor,
+                " - Group Color",
+                (finalColor) => {
+                    // === A. 确认回调 ===
+
+                    // 1. 再次确保应用最终颜色 (防止预览没跑完)
+                    setGroupColor(finalColor);
+
+                    // 2. 🔥 生成历史记录 (Issue #2)
+                    // 我们将之前存好的 affectedGroupsState 与新的 finalColor 结合
+                    const changes = affectedGroupsState.map(state => ({
+                        groupId: state.groupId,
+                        oldColor: state.oldColor,
+                        newColor: finalColor
+                    }));
+
+                    if (changes.length > 0) {
+                        HistoryMgr.add({
+                            type: 'change_group_color',
+                            changes: changes
+                        });
+                        console.log("编组颜色修改已记录，可撤回。");
+                    }
+                },
+                (previewColor) => {
+                    // === B. 实时预览回调 ===
+                    // 此时 STATE.groups 里的颜色已经被修改了，所以我们在上面必须提前保存 oldColor
+                    setGroupColor(previewColor);
+                }
+            );
+        });
 
         // 1. 打开弹窗
         document.getElementById('bgSettingsBtn').addEventListener('click', () => {
@@ -3693,6 +4237,35 @@
                 return;
             }
 
+            if (e.code === 'Escape') {
+                // 1. 定义所有弹窗的 ID 列表
+                const modalIds = [
+                    'export-modal',
+                    'save-project-modal',
+                    'bg-settings-modal',
+                    'view-settings-modal',
+                    'model-preview-modal',
+                    'version-modal',
+                    'context-menu' // 右键菜单
+                ];
+
+                // 2. 遍历隐藏
+                modalIds.forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) el.style.display = 'none';
+                });
+
+                // 3. 特殊处理颜色选择器 (调用 close 方法以清理内部回调状态)
+                if (typeof ColorPickerMgr !== 'undefined') {
+                    ColorPickerMgr.close();
+                }
+
+                // 4. 特殊处理模型预览 (清理动画循环)
+                if (typeof closePreviewModal === 'function') {
+                    closePreviewModal();
+                }
+            }
+
             // 5. 保存相关快捷键
             if ((e.ctrlKey || e.metaKey) && e.code === 'KeyS') {
                 e.preventDefault(); // 阻止浏览器默认的保存弹窗
@@ -3800,7 +4373,7 @@
             }
         });
 
-        const sliders = ['timelineZoom', 'sceneZoom', 'thicknessSlider', 'heightSlider'];
+        const sliders = ['sceneZoom', 'thicknessSlider', 'heightSlider'];
         sliders.forEach(id => {
             const el = document.getElementById(id);
             if (el) {
@@ -3832,7 +4405,6 @@
         const menu = document.getElementById('context-menu');
         const menuGroup = document.getElementById('menu-group');
         const menuUngroup = document.getElementById('menu-ungroup');
-        const groupColorPicker = document.getElementById('group-color-picker');
 
         const shapeSelect = document.getElementById('noteShapeSelect');
         const modelInput = document.getElementById('customModelInput');
@@ -3960,15 +4532,6 @@
         menuUngroup.addEventListener('click', () => {
             ungroupSelection();
             menu.style.display = 'none';
-        });
-
-        groupColorPicker.addEventListener('input', (e) => {
-            setGroupColor(e.target.value);
-            // 颜色选择器不需要立刻关闭菜单，方便看效果
-        });
-
-        groupColorPicker.addEventListener('click', (e) => {
-            e.stopPropagation();
         });
 
         initScrubbing();
@@ -5068,6 +5631,7 @@
 
 
     function seekTo(time) {
+        if (!camera || !controls) return;
         STATE.currentTime = Math.max(0, Math.min(time, STATE.totalDuration));
         updatePlayhead();
 
@@ -5267,7 +5831,14 @@
                 const clip = STATE.activeAudioClip;
                 const rawVisualTime = DOM.audio.currentTime - (clip.trimOffset || 0);
                 const audioBasedTime = rawVisualTime + clip.startTime;
-                STATE.currentTime = THREE.MathUtils.lerp(STATE.currentTime, audioBasedTime, 0.5);
+                const timeDiff = Math.abs(STATE.currentTime - audioBasedTime);
+
+                // 如果差距超过 0.5 秒（说明切屏了或者严重卡顿），直接瞬移，不要 Lerp
+                if (timeDiff > 0.5) {
+                    STATE.currentTime = audioBasedTime;
+                } else {
+                    STATE.currentTime = THREE.MathUtils.lerp(STATE.currentTime, audioBasedTime, 0.5);
+                }
             } else {
                 STATE.currentTime += delta;
             }
