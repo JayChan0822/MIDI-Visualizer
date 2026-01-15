@@ -6310,6 +6310,9 @@
     // ==========================================
     // 5. 动画循环
     // ==========================================
+    // ==========================================
+    // 5. 动画循环 (已修复录制卡顿问题)
+    // ==========================================
     function animate() {
         requestAnimationFrame(animate);
 
@@ -6317,47 +6320,61 @@
         // 如果是第一帧，初始化 lastFrameTime
         if (!STATE.lastFrameTime) STATE.lastFrameTime = now;
 
+        // 1. 计算这一帧距离上一帧的时间差 (秒)
         let delta = (now - STATE.lastFrameTime) / 1000;
 
-        // 限制 delta 防止切屏回来后过大跳跃 (Max 0.5s)
-        if (delta > 0.5) delta = 0.016;
-
+        // 2. 更新时间戳 (供下一帧使用)
         STATE.lastFrameTime = now;
 
+        // 3. 安全钳制：非录制状态下，如果卡顿超过0.5秒，修正为一帧的时间，防止切屏回来后画面瞬移
+        if (!ExportMgr.isRecording && delta > 0.5) delta = 0.016;
+
+        // --- 星空旋转 (始终转动) ---
         if (starMesh){
             starMesh.rotation.y += 0.0002;
-            starMesh.rotation.x += 0.000005
+            starMesh.rotation.x += 0.000005;
         }
 
         if (STATE.isPlaying) {
-            const now = performance.now();
-            let delta = (now - STATE.lastFrameTime) / 1000;
-            if (delta > 0.5) delta = 0.016;
-            STATE.lastFrameTime = now;
+            // 🔥【核心修复】录制时强制使用固定帧率 (Fixed Time Step)
+            // 这解决了两个问题：
+            // 1. 修复了 delta 为 0 导致进度条卡住的问题。
+            // 2. 即使渲染慢，导出的视频也能保持完美的 60FPS，不会掉帧。
+            if (ExportMgr.isRecording) {
+                const fpsVal = document.getElementById('exportFps') ? parseInt(document.getElementById('exportFps').value) : 60;
+                delta = 1.0 / fpsVal;
+            }
 
-            // 音频同步逻辑 (仅在非录制或性能足够时生效)
-            if (!DOM.audio.paused && STATE.activeAudioClip) {
+            // --- 时间累加逻辑 ---
+
+            // 情况 A: 正常播放且有音频 -> 视觉对齐音频 (Sync to Audio)
+            if (!ExportMgr.isRecording && !DOM.audio.paused && STATE.activeAudioClip) {
                 const clip = STATE.activeAudioClip;
+                // 计算音频当前的真实播放时间对应的工程时间
                 const rawVisualTime = DOM.audio.currentTime - (clip.trimOffset || 0);
                 const audioBasedTime = rawVisualTime + clip.startTime;
+
                 const timeDiff = Math.abs(STATE.currentTime - audioBasedTime);
 
+                // 如果误差太大(>0.5s)，直接瞬移纠正；否则平滑插值纠正
                 if (timeDiff > 0.5) {
                     STATE.currentTime = audioBasedTime;
                 } else {
                     STATE.currentTime = THREE.MathUtils.lerp(STATE.currentTime, audioBasedTime, 0.5);
                 }
-            } else {
-                // 录制模式下纯靠 delta 累加，保证画面不跳跃
+            }
+            // 情况 B: 录制模式 或 纯MIDI无音频 -> 使用数学累加 (Sync to Delta)
+            else {
                 STATE.currentTime += delta;
             }
 
+            // 更新 UI 指针位置
             updatePlayhead();
 
-            // 检查音频是否需要启动/停止
+            // 检查音频同步 (负责启动/停止/跳转音频)
             syncAudio();
 
-            // 移动相机
+            // 移动 3D 相机
             const targetX = STATE.currentTime * STATE.playbackSpeed;
             const camMove = targetX - cameraTargetX;
             camera.position.x += camMove;
@@ -6365,73 +6382,74 @@
             cameraTargetX = targetX;
         }
 
-        // 更新 Shader Uniforms
+        // --- Shader Uniforms 更新 ---
         const playheadX = STATE.currentTime * STATE.playbackSpeed;
         STATE.clips.forEach(clip => {
-            // 1. 使用可选链 ?. 确保每一级都存在
-            const meshChild = clip.mesh?.children?.[0] || clip.mesh;
-
-            // 2. 只有当对象确实是 Mesh 且拥有 ShaderMaterial 材质时才更新
-            if (meshChild && meshChild.material && meshChild.material.uniforms) {
-                // 3. 检查 uniforms 中是否存在 uPlayheadX 变量
-                if (meshChild.material.uniforms.uPlayheadX) {
-                    meshChild.material.uniforms.uPlayheadX.value = playheadX;
-                }
+            // 兼容 InstancedMesh (clip.mesh) 或 Group (clip.mesh.children)
+            const targets = [];
+            if (clip.mesh) {
+                if (clip.mesh.material) targets.push(clip.mesh); // InstancedMesh
+                else if (clip.mesh.children) targets.push(...clip.mesh.children); // Group
             }
+
+            targets.forEach(meshChild => {
+                if (meshChild.material && meshChild.material.uniforms) {
+                    if (meshChild.material.uniforms.uPlayheadX) {
+                        meshChild.material.uniforms.uPlayheadX.value = playheadX;
+                    }
+                }
+            });
         });
 
         controls.update();
         updateRealtimeHUD();
         ViewMgr.updateLiveUI();
 
+        // --- 背景渲染 (含模糊逻辑) ---
         if (bgMesh && bgMesh.visible && bgTexture) {
-
-            // 1. 检查是否需要模糊
             let blurAmount = BG_STATE.blur;
 
             if (blurAmount > 0) {
+                // 动态调整模糊画质以保证性能
                 if (ExportMgr.isRecording) {
-                    // 如果单帧耗时超过 40ms (即 FPS 低于 25)，说明 GPU 撑不住了
-                    // 这里的 delta 已经在 animate 函数开头定义了，可以直接用
+                    // 录制时：如果这一帧渲染太慢 (>40ms)，稍微降低模糊采样率防止崩溃
                     if (delta > 0.04) {
                         ExportMgr.blurThrottle = Math.max(0.0, ExportMgr.blurThrottle - 0.01);
                     }
                 } else {
-                    // 非录制状态，缓慢恢复画质
+                    // 平时：画质优先
                     ExportMgr.blurThrottle = Math.min(1.0, ExportMgr.blurThrottle + 0.05);
                 }
 
-                // 2. 定义 effectiveBlur 变量
                 const effectiveBlur = blurAmount * ExportMgr.blurThrottle;
-                // --- Pass 1: 横向模糊 ---
-                // 输入：原始纹理 -> 输出：RtX
+
+                // Pass 1: 横向模糊
                 blurMesh.material = blurMatX;
-                blurMatX.uniforms.tMap.value = bgTexture; // 原始图
+                blurMatX.uniforms.tMap.value = bgTexture;
                 blurMatX.uniforms.uBlur.value = effectiveBlur;
-                renderer.setRenderTarget(blurRtX); // 渲染到 RtX
+                renderer.setRenderTarget(blurRtX);
                 renderer.render(blurScene, blurCamera);
 
-                // --- Pass 2: 纵向模糊 ---
-                // 输入：RtX -> 输出：RtY
+                // Pass 2: 纵向模糊
                 blurMesh.material = blurMatY;
-                blurMatY.uniforms.tMap.value = blurRtX.texture; // 拿刚才横向的结果
+                blurMatY.uniforms.tMap.value = blurRtX.texture;
                 blurMatY.uniforms.uBlur.value = effectiveBlur;
-                renderer.setRenderTarget(blurRtY); // 渲染到 RtY
+                renderer.setRenderTarget(blurRtY);
                 renderer.render(blurScene, blurCamera);
 
-                // --- Final: 给主场景 ---
-                renderer.setRenderTarget(null); // 恢复渲染到屏幕
-                bgMaterial.uniforms.tMap.value = blurRtY.texture; // 使用最终模糊结果
+                // Final: 上屏
+                renderer.setRenderTarget(null);
+                bgMaterial.uniforms.tMap.value = blurRtY.texture;
             } else {
-                // 如果没有模糊，直接用原图，节省性能
                 bgMaterial.uniforms.tMap.value = bgTexture;
             }
         }
 
         renderer.render(scene, camera);
+
+        // --- 录制帧捕获 ---
         if (ExportMgr.isRecording && ExportMgr.videoTrack) {
-            // requestFrame() 告诉浏览器："这一帧画好了，立刻把它送到录制器里"
-            // 这样即使渲染变慢，每一帧也能被精准捕获，不会漏帧
+            // 告诉浏览器："这一帧画好了，立刻把它送到录制器里"
             ExportMgr.videoTrack.requestFrame();
         }
     }
