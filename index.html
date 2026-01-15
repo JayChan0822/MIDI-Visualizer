@@ -6196,17 +6196,8 @@
             let delta = (now - STATE.lastFrameTime) / 1000;
             STATE.lastFrameTime = now;
 
-            // 🔥🔥🔥 核心优化：录制时强制锁定为 60 FPS 的步长 🔥🔥🔥
-            // 这样即使电脑渲染 4K 很卡 (例如 10fps)，录出来的视频也是丝滑的 60fps
-            // 代价：录制期间音频听起来会正常，但视频画面是“慢动作”渲染的，
-            // 最终视频里音频可能会因为不同步而显得奇怪，但画面绝对流畅。
-            // 对于视觉展示，画面流畅度优先。
-            if (ExportMgr.isRecording) {
-                delta = 1.0 / 60.0;
-            }
-
             // 音频同步逻辑 (仅在非录制或性能足够时生效)
-            if (!DOM.audio.paused && STATE.activeAudioClip && !ExportMgr.isRecording) {
+            if (!DOM.audio.paused && STATE.activeAudioClip) {
                 const clip = STATE.activeAudioClip;
                 const rawVisualTime = DOM.audio.currentTime - (clip.trimOffset || 0);
                 const audioBasedTime = rawVisualTime + clip.startTime;
