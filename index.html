@@ -853,6 +853,34 @@
             cursor: pointer;
         }
 
+        /* --- 框选矩形 (Marquee) --- */
+        .selection-box {
+            position: absolute;
+            background: rgba(10, 132, 255, 0.2);
+            border: 1px solid rgba(10, 132, 255, 0.6);
+            pointer-events: none; /* 让鼠标事件穿透，防止干扰 */
+            z-index: 999;
+            display: none;
+        }
+
+        /* Clip 选中状态 */
+        .clip.selected-clip {
+            background-color: rgba(255, 255, 255, 0.3) !important; /* 变亮 */
+            border-color: #fff !important;
+            box-shadow: 0 0 0 2px var(--accent-blue); /* 蓝色外发光边框 */
+            z-index: 10;
+        }
+        #timeline-lanes, #tracks-area, .clip {
+            user-select: none;
+            -webkit-user-select: none; /* Safari/Chrome */
+        }
+
+        /* 保持输入框可选中 */
+        input, textarea {
+            user-select: text !important;
+            -webkit-user-select: text !important;
+        }
+
     </style>
 
     <script type="importmap">
@@ -955,7 +983,7 @@
                 <span class="logo-text title-main">MIDI</span>
                 <span class="logo-text title-sub">Visualizer</span>
             </div>
-            <span class="version-tag">v1.5.2</span>
+            <span class="version-tag">v1.6.0</span>
         </div>
 
         <div class="toolbar-separator"></div>
@@ -1067,6 +1095,7 @@
 
                 <span style="color:#aaa;">视角平移</span>        <span style="color:#bf5af2;">Ctrl/Cmd + 拖拽</span>
                 <span style="color:#aaa;">视角重置</span>        <span style="color:#bf5af2;">Ctrl/Cmd + 双击</span>
+                <span style="color:#aaa;">全选事件</span>      <span>Ctrl/Cmd + A</span>
                 <span style="color:#aaa;">多选 / 连选</span>      <span>Ctrl / Shift</span>
             </div>
         </div>
@@ -1348,12 +1377,18 @@
                 text-shadow: none;   /* 去掉可能的文字阴影 */
                 line-height: 1.2;
             ">
-                v1.5.2
+                v1.6.0
             </span>
         </h3>
 
         <div style="height: 250px; overflow-y: auto; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px; margin-bottom: 20px;">
-            <p style="color: #aaa; font-size: 12px; margin-top: 0;">2026-01-16 1.5.2 (Current)</p>
+            <p style="color: #aaa; font-size: 12px; margin-top: 0;">2026-01-17 1.6.0 (Current)</p>
+            <ul style="padding-left: 20px; color: #ddd; line-height: 1.6;">
+                <li>新增：事件选择 - 支持拖拽框选多个 Clip，配合 Shift 键可增量加选</li>
+                <li>优化：背景视频时间线同步 - 背景视频现已与时间轴完全对齐，不再独立播放</li>
+            </ul>
+
+            <p style="color: #aaa; font-size: 12px; margin-top: 0;">2026-01-16 1.5.2</p>
             <ul style="padding-left: 20px; color: #ddd; line-height: 1.6;">
                 <li>紧急修复：视频无法录制</li>
             </ul>
@@ -1669,6 +1704,7 @@
         bpm: 120,
         timeSignature: 4, // 4/4 拍
         selectedTrackIds: new Set(),
+        selectedClips: new Set(), // 🔥 新增：存储选中的 Clip 对象
         lastSelectedTrackId: null, // 🔥 新增：记录最后一次点击的轨道（锚点）
         groups: {},
         nextGroupId: 1,
@@ -2945,20 +2981,44 @@
             e.preventDefault();
             e.stopPropagation(); // 防止冒泡到 timeline 触发 scrubbing
 
+            if (!STATE.selectedClips.has(this)) {
+                if (!e.shiftKey) {
+                    selectClip(this); // 它是唯一的
+                } else {
+                    selectClip(this, true); // 加选
+                }
+            }
+
             const startX = e.clientX;
             const startLeft = parseFloat(this.dom.style.left) || 0;
+
+            const initialStates = [];
+            STATE.selectedClips.forEach(clip => {
+                initialStates.push({
+                    clip: clip,
+                    originalStart: clip.startTime,
+                    dom: clip.dom
+                });
+            });
 
             // 🔥 记录开始时的状态 (用于 Undo)
             const originalStartTime = this.startTime;
 
             const onMove = (mv) => {
+                autoScroll(mv.clientY);
                 const deltaPx = mv.clientX - startX;
-                let newLeft = startLeft + deltaPx;
-                if(newLeft < 0) newLeft = 0;
+                const deltaTime = deltaPx / STATE.pxPerSec;
 
-                this.startTime = newLeft / STATE.pxPerSec;
-                this.dom.style.left = newLeft + 'px';
-                this.update3DPosition();
+                // 🔥 3. 批量更新所有选中的 Clip
+                initialStates.forEach(state => {
+                    let newStart = state.originalStart + deltaTime;
+                    if (newStart < 0) newStart = 0; // 边界检查
+
+                    state.clip.startTime = newStart;
+                    state.clip.updateDOMPosition();
+                    state.clip.update3DPosition();
+                });
+
                 updateTotalDuration();
             };
 
@@ -2966,14 +3026,12 @@
                 window.removeEventListener('mousemove', onMove);
                 window.removeEventListener('mouseup', onUp);
 
-                // 🔥 拖拽结束：如果时间变了，加入历史
-                if (Math.abs(this.startTime - originalStartTime) > 0.01) {
-                    HistoryMgr.add({
-                        type: 'move_clip',
-                        clip: this, // 保存引用
-                        oldStart: originalStartTime,
-                        newStart: this.startTime
-                    });
+                if (initialStates.length > 0) {
+                    const first = initialStates[0];
+                    if (Math.abs(first.clip.startTime - first.originalStart) > 0.01) {
+                        // 可以在这里触发一次保存或日志
+                        console.log(`移动了 ${initialStates.length} 个 Clip`);
+                    }
                 }
             };
 
@@ -4160,11 +4218,169 @@
             window.addEventListener('mousemove', onMouseMove);
             window.addEventListener('mouseup', onMouseUp);
         };
-
-        // 为“标尺”和“轨道区域”都绑定这个逻辑
-        // 使用 capture: false 确保冒泡逻辑正常
-        DOM.timelineLanes.addEventListener('mousedown', onMouseDown);
+// 🔥 修改：只在标尺区域监听 Scrubbing (播放跳转)
+        // DOM.timelineLanes.addEventListener('mousedown', onMouseDown); // <--- 删除这行
         DOM.rulerContent.addEventListener('mousedown', onMouseDown);
+    }
+
+    // 🔥 修复版：边缘自动滚动逻辑 (带严格边界限制)
+    function autoScroll(clientY) {
+        const container = DOM.timelineLanes;
+        const rect = container.getBoundingClientRect();
+
+        const edgeSize = 50; // 边缘感应区
+        const speed = 15;    // 滚动速度
+
+        // ============================================================
+        // 🔥 核心修复：基于轨道数量计算真实内容高度，而不是依赖 DOM scrollHeight
+        // ============================================================
+        // 1. 获取轨道单行高度 (CSS .track-lane 定义为 64px)
+        const trackHeight = 64;
+
+        // 2. 计算所有轨道叠加的总高度
+        const totalTrackHeight = STATE.tracks.length * trackHeight;
+
+        // 3. 加上底部缓冲区域 (例如 100px)，让用户能稍微多滚一点点以便操作底部
+        const paddingBottom = 100;
+
+        // 4. 计算“逻辑上”允许的最大滚动距离
+        // 内容总高 - 视口高度。如果内容比视口小，则结果为 0 (禁止滚动)
+        const contentMaxScroll = Math.max(0, totalTrackHeight + paddingBottom - container.clientHeight);
+
+        // 5. 获取“物理上”的最大滚动距离 (DOM 实际状态)
+        const physicalMaxScroll = container.scrollHeight - container.clientHeight;
+
+        // 6. 取两者中较小的那个作为最终限制
+        // 这样既防止滚到没有轨道的地方，也防止物理 DOM 没渲染出来时报错
+        const finalMaxScrollTop = Math.min(physicalMaxScroll, contentMaxScroll);
+
+
+        // --- 向下滚动逻辑 ---
+        // (鼠标接近底部 且 当前滚动位置还没超过限制)
+        if (clientY > rect.bottom - edgeSize) {
+            if (container.scrollTop < finalMaxScrollTop) {
+                container.scrollTop += speed;
+                return true;
+            }
+        }
+            // --- 向上滚动逻辑 ---
+        // (鼠标接近顶部 且 还没滚到顶)
+        else if (clientY < rect.top + edgeSize) {
+            if (container.scrollTop > 0) {
+                container.scrollTop -= speed;
+                return true;
+            }
+        }
+        return false;
+    }
+
+    function initBoxSelection() {
+        const container = DOM.timelineLanes;
+
+        // 创建框选 DOM
+        const box = document.createElement('div');
+        box.className = 'selection-box';
+        container.appendChild(box);
+
+        container.addEventListener('mousedown', (e) => {
+            // 1. 如果点击的是 Clip，或者是在滚动条上，则忽略
+            if (e.target.closest('.clip') || e.target === container) {
+                // 注意：e.target === container 是为了防止点击滚动条时触发，
+                // 但通常 timeline-lanes 容器本身很大，这里主要靠 closest('.clip') 过滤
+            }
+            if (e.target.closest('.clip')) return;
+
+            e.preventDefault();
+
+            // 2. 如果不是左键，忽略
+            if (e.button !== 0) return;
+
+            // 3. 核心：点击空白处，先清空之前的选择 (除非按住 Shift/Ctrl)
+            if (!e.shiftKey && !e.ctrlKey && !e.metaKey) {
+                clearClipSelection();
+            }
+
+            // 记录起点 (相对于容器内容)
+            const rect = container.getBoundingClientRect();
+            const startX = e.clientX - rect.left + container.scrollLeft;
+            const startY = e.clientY - rect.top + container.scrollTop;
+
+            box.style.left = startX + 'px';
+            box.style.top = startY + 'px';
+            box.style.width = '0px';
+            box.style.height = '0px';
+            box.style.display = 'block';
+
+            let isDragging = false;
+
+            const onMouseMove = (ev) => {
+                isDragging = true;
+                autoScroll(ev.clientY);
+                const currentX = ev.clientX - rect.left + container.scrollLeft;
+                const currentY = ev.clientY - rect.top + container.scrollTop;
+
+                const width = Math.abs(currentX - startX);
+                const height = Math.abs(currentY - startY);
+                const left = Math.min(currentX, startX);
+                const top = Math.min(currentY, startY);
+
+                box.style.width = width + 'px';
+                box.style.height = height + 'px';
+                box.style.left = left + 'px';
+                box.style.top = top + 'px';
+
+                // --- 实时碰撞检测 ---
+                // 获取框选区域的矩形 (相对于视口，方便对比)
+                const selectRect = box.getBoundingClientRect();
+
+                STATE.clips.forEach(clip => {
+                    if (!clip.dom) return;
+                    const clipRect = clip.dom.getBoundingClientRect();
+
+                    // 简单的矩形碰撞检测
+                    const isOverlapping = !(selectRect.right < clipRect.left ||
+                        selectRect.left > clipRect.right ||
+                        selectRect.bottom < clipRect.top ||
+                        selectRect.top > clipRect.bottom);
+
+                    if (isOverlapping) {
+                        selectClip(clip, true); // true = add to selection
+                    } else {
+                        // 如果没有按下 Shift，移出框外就取消选中
+                        if (!ev.shiftKey) {
+                            // 这里稍微复杂，暂且只做增量选择，松手后处理反选逻辑会更好
+                            // 为简单起见，这里每次重绘都依赖 "点击空白清理 + 增量添加"
+                        }
+                    }
+                });
+            };
+
+            const onMouseUp = () => {
+                box.style.display = 'none';
+                box.style.width = 0;
+                box.style.height = 0;
+                window.removeEventListener('mousemove', onMouseMove);
+                window.removeEventListener('mouseup', onMouseUp);
+            };
+
+            window.addEventListener('mousemove', onMouseMove);
+            window.addEventListener('mouseup', onMouseUp);
+        });
+    }
+
+    // 辅助：清空所有 Clip 选中
+    function clearClipSelection() {
+        STATE.selectedClips.forEach(clip => {
+            if (clip.dom) clip.dom.classList.remove('selected-clip');
+        });
+        STATE.selectedClips.clear();
+    }
+
+    // 辅助：选中某个 Clip
+    function selectClip(clip, addToExisting = false) {
+        if (!addToExisting) clearClipSelection();
+        STATE.selectedClips.add(clip);
+        if (clip.dom) clip.dom.classList.add('selected-clip');
     }
 
     function updateAllTracksVisibility() {
@@ -4314,17 +4530,41 @@
             };
         }
         else if (type === 'video') {
+            // 清理旧视频
+            if (bgVideoElement) {
+                bgVideoElement.pause();
+                bgVideoElement.src = "";
+            }
+
             const video = document.createElement('video');
             video.src = url;
             video.loop = true;
             video.muted = true;
             video.playsInline = true;
-            video.play().then(() => {
+            video.crossOrigin = "anonymous"; // 避免跨域贴图黑屏
+
+            // 🔥 修改：不要立即 Play，而是等待元数据加载完毕后同步状态
+            video.onloadeddata = () => {
                 const aspect = video.videoWidth / video.videoHeight;
                 bgVideoElement = video;
+
+                // 1. 创建纹理
                 const tex = new THREE.VideoTexture(video);
                 applyTexture(tex, aspect);
-            }).catch(e => console.error("Video play error:", e));
+
+                // 2. 同步时间 (取余循环)
+                if (video.duration > 0) {
+                    video.currentTime = STATE.currentTime % video.duration;
+                }
+
+                // 3. 如果当前是播放状态，则播放视频
+                if (STATE.isPlaying) {
+                    video.play().catch(e => console.error("Video autoplay blocked:", e));
+                }
+            };
+
+            // 触发加载
+            video.load();
         }
     }
 
@@ -4747,6 +4987,16 @@
                 if (e.code === 'Escape') target.blur();
                 return;
             }
+            if ((e.ctrlKey || e.metaKey) && e.code === 'KeyA') {
+                e.preventDefault(); // 🛑 核心：阻止浏览器默认的“全选网页文本”行为
+
+                // 遍历所有 Clip 并选中
+                STATE.clips.forEach(clip => {
+                    selectClip(clip, true); // true 表示添加到选中集合，不清除旧的
+                });
+                console.log(`已全选 ${STATE.clips.length} 个 Clip`);
+                return; // 结束，不再处理后续逻辑
+            }
 
             if (e.code === 'Escape') {
                 // 1. 定义所有弹窗的 ID 列表
@@ -5046,7 +5296,7 @@
         });
 
         initScrubbing();
-
+        initBoxSelection();
         ViewMgr.init();
     }
 
@@ -6130,6 +6380,7 @@
         if (STATE.isPlaying) {
             STATE.isPlaying = false;
             DOM.audio.pause();
+            if (bgVideoElement) bgVideoElement.pause();
             DOM.playBtn.innerText = "PLAY (Space)";
             DOM.playBtn.classList.remove('btn-primary'); // 去掉高亮
         } else {
@@ -6140,12 +6391,17 @@
 
             // 尝试播放音频
             syncAudio();
+            // 🔥 同步播放背景视频
+            if (bgVideoElement) {
+                bgVideoElement.play().catch(e => console.log("Bg video play blocked"));
+            }
         }
     }
 
     function stopPlay() {
         STATE.isPlaying = false;
         DOM.audio.pause();
+        if (bgVideoElement) bgVideoElement.pause();
         DOM.playBtn.innerText = "PLAY (Space)";
         DOM.playBtn.classList.remove('btn-primary');
         seekTo(0);
@@ -6165,9 +6421,18 @@
         controls.target.x = targetX;
         cameraTargetX = targetX;
 
+        if (bgVideoElement && bgVideoElement.duration > 0) {
+            // 使用取余运算实现视频比音频短时的自动循环
+            bgVideoElement.currentTime = STATE.currentTime % bgVideoElement.duration;
+        }
+
         // 如果正在播放，同步音频
         if (STATE.isPlaying) {
             syncAudio();
+            // 如果视频因为某些原因暂停了，确保它继续播放
+            if (bgVideoElement && bgVideoElement.paused) {
+                bgVideoElement.play().catch(() => {});
+            }
         }
     }
 
