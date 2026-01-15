@@ -423,7 +423,7 @@
             display: flex; align-items: center; gap: 10px;
             font-size: 11px; font-weight: 500; color: var(--text-muted);
         }
-        ..slider-group > span {
+        .slider-group > span {
             min-width: 60px;
             text-align: right;
         }
@@ -1186,7 +1186,7 @@
         <h3 style="margin-top:0; border-bottom:1px solid #444; padding-bottom:10px;">背景参数设置</h3>
 
         <div class="form-group">
-            <label>不透明度 (Opacity): <span id="val-opacity">0.6</span></label>
+            <label>不透明度 (Opacity): <span id="val-opacity">1.0</span></label>
             <input type="range" id="bg-opacity" min="0" max="1" step="0.05" value="0.6" style="width:100%">
         </div>
 
@@ -1525,7 +1525,7 @@
             // 核心算法：当至少两个维度处于边缘时，判定为“棱线”
             if ((edgeX + edgeY + edgeZ) >= 2.0) {
                 // 棱线：使用亮色并叠加白色发光感
-                gl_FragColor = vec4(finalColor + vec3(1.0), 1.0);
+                gl_FragColor = vec4(finalColor + vec3(0.1), 0.8);
             } else {
                 // 内部填充：大幅减弱亮度，产生中空/透明感
                 gl_FragColor = vec4(finalColor * 1.0, 0.8);
@@ -1647,6 +1647,38 @@
         zSeparation: 0.3,
     };
 
+    const ResourceMgr = {
+        audioCache: new Map(),
+
+        // 注册资源并返回一个可复用的 Blob URL
+        register(fileOrBase64) {
+            // 如果是 Base64 字符串，转为 Blob
+            if (typeof fileOrBase64 === 'string' && fileOrBase64.startsWith('data:')) {
+                const blob = this.base64ToBlob(fileOrBase64);
+                const url = URL.createObjectURL(blob);
+                return url;
+            }
+            // 如果直接是 File 或 Blob 对象
+            return URL.createObjectURL(fileOrBase64);
+        },
+
+        base64ToBlob(base64) {
+            const parts = base64.split(';base64,');
+            const contentType = parts[0].split(':')[1];
+            const raw = window.atob(parts[1]);
+            const uInt8Array = new Uint8Array(raw.length);
+            for (let i = 0; i < raw.length; ++i) uInt8Array[i] = raw.charCodeAt(i);
+            return new Blob([uInt8Array], { type: contentType });
+        },
+
+        // 手动释放内存
+        revoke(url) {
+            if (url && url.startsWith('blob:')) {
+                URL.revokeObjectURL(url);
+            }
+        }
+    };
+
     // 新增 Group 类
     class Group {
         constructor(name, color) {
@@ -1681,15 +1713,56 @@
     const HistoryMgr = {
         undoStack: [],
         redoStack: [],
-        maxLimit: 50,
+        maxLimit: 10,
 
         add(cmd) {
-            this.undoStack.push(cmd);
+            // 在添加新操作前，如果重做栈不为空，需先释放重做栈中的 Blob 资源
+            this.clearStackResources(this.redoStack);
             this.redoStack = [];
+
+            this.undoStack.push(cmd);
+
+            // 如果超过限制，弹出最旧的操作并释放其关联的资源
             if (this.undoStack.length > this.maxLimit) {
-                this.undoStack.shift();
+                const oldestCmd = this.undoStack.shift();
+                this.disposeCommandResources(oldestCmd);
             }
             console.log("History Add:", cmd.type);
+        },
+
+        // 关键：识别命令中包含的资源并释放
+        disposeCommandResources(cmd) {
+            if (!cmd) return;
+
+            // 1. 如果是背景图更改
+            if (cmd.type === 'change_background') {
+                if (cmd.oldData) ResourceMgr.revoke(cmd.oldData);
+                if (cmd.newData) ResourceMgr.revoke(cmd.newData);
+            }
+
+            // 2. 如果是音频导入
+            if (cmd.type === 'import_audio') {
+                if (cmd.oldData?.clips) {
+                    cmd.oldData.clips.forEach(c => ResourceMgr.revoke(c.sourceData));
+                }
+                if (cmd.newData?.clips) {
+                    cmd.newData.clips.forEach(c => ResourceMgr.revoke(c.sourceData));
+                }
+            }
+
+            // 3. 如果是删除轨道
+            if (cmd.type === 'delete_track' && cmd.trackData?.clips) {
+                cmd.trackData.clips.forEach(c => ResourceMgr.revoke(c.sourceData));
+            }
+
+            // 4. 处理 Project JSON (如果存储的是对象，JS 引擎会自动回收，
+            // 但如果里面包含大量 Blob 引用，需确保清理)
+            cmd.oldProject = null;
+            cmd.newProject = null;
+        },
+
+        clearStackResources(stack) {
+            stack.forEach(cmd => this.disposeCommandResources(cmd));
         },
 
         undo() {
@@ -1736,6 +1809,9 @@
                     const bgData = isUndo ? cmd.oldData : cmd.newData;
                     const bgType = isUndo ? cmd.oldType : cmd.newType;
 
+                    const bgBase64 = isUndo ? cmd.oldBase64 : cmd.newBase64;
+                    storedBgBase64ForSave = bgBase64;
+
                     if (bgData) {
                         // A. 恢复图片
                         applyBackgroundSource(bgData, bgType);
@@ -1755,16 +1831,11 @@
                         // 清空标记
                         currentBgBase64 = null;
                         currentBgType = null;
-
-                        // 🔥🔥🔥 【核心修复】必须清空纹理引用，防止 animate 循环继续渲染旧图 🔥🔥🔥
+                        storedBgBase64ForSave = null;
                         bgTexture = null;
 
                         setStarfieldState(true); // 开星星
-
-                        // 🔥 关键：强制刷新尺寸，确保铺满屏幕
-                        requestAnimationFrame(() => {
-                            onResize();
-                        });
+                        requestAnimationFrame(() => onResize());
                     }
                     break;
 
@@ -1807,7 +1878,7 @@
                         // === 撤回清除 (恢复以前的样子) ===
                         console.log("Undo Clear: Restoring visuals...");
 
-                        currentNoteTexture = cmd.oldTexture;
+                        // currentNoteTexture = cmd.oldTexture;
                         refreshAllMidiMeshes();
 
                         if (cmd.oldBgData) {
@@ -2190,7 +2261,7 @@
     // ColorPickerMgr.init();
 
     const BG_STATE = {
-        opacity: 0.6,
+        opacity: 1.0,
         blur: 0,
         brightness: 100,
         contrast: 100,
@@ -2199,6 +2270,7 @@
 
     let currentBgBase64 = null;
     let currentBgType = null;
+    let storedBgBase64ForSave = null;
 
     // 辅助函数：应用样式到当前背景元素
     function applyBackgroundStyles() {
@@ -3104,20 +3176,47 @@
             this.build3D();
         }
 
+        // 在 class Clip 中
         destroy() {
             if (this.dom) this.dom.remove();
 
             if (this.mesh) {
-                // 🔥 深度清理：遍历子元素释放几何体和材质，防止内存泄漏
+                // 递归遍历所有子对象
                 this.mesh.traverse((child) => {
                     if (child.isMesh || child.isLine || child.isLineSegments) {
-                        if (child.geometry) child.geometry.dispose();
+                        // 1. 释放几何体 (显存大头)
+                        if (child.geometry) {
+                            child.geometry.dispose();
+                        }
+
+                        // 2. 释放材质和贴图
                         if (child.material) {
-                            if (Array.isArray(child.material)) {
-                                child.material.forEach(m => m.dispose());
-                            } else {
-                                child.material.dispose();
-                            }
+                            // 处理材质数组
+                            const mats = Array.isArray(child.material) ? child.material : [child.material];
+
+                            mats.forEach(m => {
+                                // 释放材质本身
+                                m.dispose();
+
+                                // 🔥 关键：释放材质上的贴图 (Texture)
+                                // 如果不释放这个，显存会一直涨
+                                for (const key of Object.keys(m)) {
+                                    const val = m[key];
+                                    if (val && val.isTexture) {
+                                        val.dispose();
+                                    }
+                                }
+
+                                // 释放 ShaderMaterial 的 uniforms 里的贴图
+                                if (m.uniforms) {
+                                    for (const key of Object.keys(m.uniforms)) {
+                                        const val = m.uniforms[key].value;
+                                        if (val && val.isTexture) {
+                                            val.dispose();
+                                        }
+                                    }
+                                }
+                            });
                         }
                     }
                 });
@@ -3126,8 +3225,17 @@
                 scene.remove(this.mesh);
             }
 
+            // 释放缩略图 Canvas 内存
+            if (this.canvas) {
+                this.canvas.width = 0;
+                this.canvas.height = 0;
+                this.canvas = null;
+            }
+
+            // 断开引用
             this.mesh = null;
             this.dom = null;
+            this.data = null; // 释放音频/MIDI数据引用
         }
     }
 
@@ -4092,54 +4200,51 @@
     // 全局变量用于控制视频播放
     let bgVideoElement = null;
 
-    // 1. 处理用户上传的文件
     function processBackgroundFile(file) {
         if (!file) return;
 
-        // 1. 🔥 记录旧状态 (用于 Undo)
-        const oldBgData = currentBgBase64;
-        const oldBgType = currentBgType;
+        // 显示 Loading，因为转换 Base64 可能需要一点时间（特别是大图片）
+        if(DOM.loading) DOM.loading.style.display = 'flex';
 
-        // 停止旧视频
-        if (bgVideoElement) {
-            bgVideoElement.pause();
-            bgVideoElement.src = "";
-            bgVideoElement = null;
-        }
-
-        // 🔥 关键步骤：读取文件为 Base64 字符串用于保存
         const reader = new FileReader();
+
         reader.onload = (e) => {
-            currentBgBase64 = e.target.result;
-            currentBgType = file.type.startsWith('video/') ? 'video' : 'image';
+            const base64Data = e.target.result; // 这里拿到了 Base64
 
-            // 读取成功后，应用到场景
-            applyBackgroundSource(currentBgBase64, currentBgType);
+            // --- 1. 准备历史记录旧数据 ---
+            const oldBgBlob = currentBgBase64;
+            const oldBgType = currentBgType;
+            const oldBgBase64 = storedBgBase64ForSave; // 记录旧的 Base64
 
-            // ✨ 新增：导入背景后，自动关闭星空
-            const starToggle = document.getElementById('starfieldToggle');
-            if (starToggle) {
-                starToggle.checked = false; // UI 变关
-                if (starMesh) starMesh.visible = false; // 3D 变关
-            }
+            // --- 2. 注册 Blob 用于渲染 (性能优化) ---
+            const newBgUrl = ResourceMgr.register(file);
+            const newBgType = file.type.startsWith('video/') ? 'video' : 'image';
 
-            setStarfieldState(false);
+            // --- 3. 更新全局状态 ---
+            currentBgBase64 = newBgUrl;       // 运行时用 Blob
+            currentBgType = newBgType;
+            storedBgBase64ForSave = base64Data; // 保存时用 Base64
 
-            // 3. 🔥 加入历史记录
+            // --- 4. 应用背景 ---
+            applyBackgroundSource(newBgUrl, newBgType);
+
+            // --- 5. 记录历史 ---
             HistoryMgr.add({
                 type: 'change_background',
-                oldData: oldBgData,
+                // 渲染用的 Blob
+                oldData: oldBgBlob,
                 oldType: oldBgType,
-                newData: currentBgBase64,
-                newType: currentBgType
+                newData: newBgUrl,
+                newType: newBgType,
+                // 保存用的 Base64 🔥
+                oldBase64: oldBgBase64,
+                newBase64: base64Data
             });
 
-            console.log("背景已更换 (可撤回)");
-
-            requestAnimationFrame(() => {
-                onResize();
-            });
+            if(DOM.loading) DOM.loading.style.display = 'none';
         };
+
+        // 开始读取文件
         reader.readAsDataURL(file);
     }
 
@@ -4287,11 +4392,20 @@
                         // 遍历所有 Clip 更新 Shader 的颜色 Uniform
                         STATE.clips.forEach(clip => {
                             if (clip.mesh && clip.track.type === 'midi') {
-                                clip.mesh.children.forEach(child => {
-                                    if (child.material && child.material.uniforms) {
-                                        child.material.uniforms.uHighlightColor.value.copy(currentHighlightColor);
-                                    }
-                                });
+                                // 🔥🔥🔥 修复开始：直接检查 clip.mesh.material 🔥🔥🔥
+                                // MIDI 的 mesh 是 InstancedMesh，直接持有 material，没有 children
+                                if (clip.mesh.material && clip.mesh.material.uniforms) {
+                                    clip.mesh.material.uniforms.uHighlightColor.value.copy(currentHighlightColor);
+                                }
+                                // 为了兼容性（如果未来改成 Group），也可以保留 children 检查，但必须先检查自身
+                                else if (clip.mesh.children && clip.mesh.children.length > 0) {
+                                    clip.mesh.children.forEach(child => {
+                                        if (child.material && child.material.uniforms) {
+                                            child.material.uniforms.uHighlightColor.value.copy(currentHighlightColor);
+                                        }
+                                    });
+                                }
+                                // 🔥🔥🔥 修复结束 🔥🔥🔥
                             }
                         });
                     },
@@ -4309,11 +4423,18 @@
                             // 2. 遍历所有 Clip 更新 Shader 的宽度 Uniform
                             STATE.clips.forEach(clip => {
                                 if (clip.mesh && clip.track.type === 'midi') {
-                                    clip.mesh.children.forEach(child => {
-                                        if (child.material && child.material.uniforms) {
-                                            child.material.uniforms.uHighlightWidth.value = currentHighlightWidth;
-                                        }
-                                    });
+                                    // 🔥🔥🔥 修复开始：宽度调节逻辑同上 🔥🔥🔥
+                                    if (clip.mesh.material && clip.mesh.material.uniforms) {
+                                        clip.mesh.material.uniforms.uHighlightWidth.value = currentHighlightWidth;
+                                    }
+                                    else if (clip.mesh.children && clip.mesh.children.length > 0) {
+                                        clip.mesh.children.forEach(child => {
+                                            if (child.material && child.material.uniforms) {
+                                                child.material.uniforms.uHighlightWidth.value = currentHighlightWidth;
+                                            }
+                                        });
+                                    }
+                                    // 🔥🔥🔥 修复结束 🔥🔥🔥
                                 }
                             });
                         }
@@ -4524,6 +4645,8 @@
         document.getElementById('zSpaceSlider').addEventListener('input', (e) => {
             // 滑块值 0-200，除以 10 得到 0.0 - 20.0 的范围
             STATE.zSeparation = parseInt(e.target.value) / 10;
+
+            updateTrackZRanks();
 
             // 重建所有 MIDI 模型的 3D 形态
             STATE.clips.forEach(c => c.build3D());
@@ -5611,7 +5734,7 @@
                 start: c.startTime,
                 duration: c.duration,
                 name: c.name,
-                sourceData: c.sourceFile // 这里的 sourceFile 包含了 Base64 或原始数据
+                resourceId: c.name// 这里的 sourceFile 包含了 Base64 或原始数据
             }))
         };
     }
@@ -6190,6 +6313,17 @@
     function animate() {
         requestAnimationFrame(animate);
 
+        const now = performance.now();
+        // 如果是第一帧，初始化 lastFrameTime
+        if (!STATE.lastFrameTime) STATE.lastFrameTime = now;
+
+        let delta = (now - STATE.lastFrameTime) / 1000;
+
+        // 限制 delta 防止切屏回来后过大跳跃 (Max 0.5s)
+        if (delta > 0.5) delta = 0.016;
+
+        STATE.lastFrameTime = now;
+
         if (starMesh){
             starMesh.rotation.y += 0.0002;
             starMesh.rotation.x += 0.000005
@@ -6198,6 +6332,7 @@
         if (STATE.isPlaying) {
             const now = performance.now();
             let delta = (now - STATE.lastFrameTime) / 1000;
+            if (delta > 0.5) delta = 0.016;
             STATE.lastFrameTime = now;
 
             // 音频同步逻辑 (仅在非录制或性能足够时生效)
@@ -6246,22 +6381,33 @@
         });
 
         controls.update();
-
         updateRealtimeHUD();
-
         ViewMgr.updateLiveUI();
 
         if (bgMesh && bgMesh.visible && bgTexture) {
 
             // 1. 检查是否需要模糊
-            const blurAmount = BG_STATE.blur; // 从全局配置拿值
+            let blurAmount = BG_STATE.blur;
 
             if (blurAmount > 0) {
+                if (ExportMgr.isRecording) {
+                    // 如果单帧耗时超过 40ms (即 FPS 低于 25)，说明 GPU 撑不住了
+                    // 这里的 delta 已经在 animate 函数开头定义了，可以直接用
+                    if (delta > 0.04) {
+                        ExportMgr.blurThrottle = Math.max(0.0, ExportMgr.blurThrottle - 0.01);
+                    }
+                } else {
+                    // 非录制状态，缓慢恢复画质
+                    ExportMgr.blurThrottle = Math.min(1.0, ExportMgr.blurThrottle + 0.05);
+                }
+
+                // 2. 定义 effectiveBlur 变量
+                const effectiveBlur = blurAmount * ExportMgr.blurThrottle;
                 // --- Pass 1: 横向模糊 ---
                 // 输入：原始纹理 -> 输出：RtX
                 blurMesh.material = blurMatX;
                 blurMatX.uniforms.tMap.value = bgTexture; // 原始图
-                blurMatX.uniforms.uBlur.value = blurAmount;
+                blurMatX.uniforms.uBlur.value = effectiveBlur;
                 renderer.setRenderTarget(blurRtX); // 渲染到 RtX
                 renderer.render(blurScene, blurCamera);
 
@@ -6269,7 +6415,7 @@
                 // 输入：RtX -> 输出：RtY
                 blurMesh.material = blurMatY;
                 blurMatY.uniforms.tMap.value = blurRtX.texture; // 拿刚才横向的结果
-                blurMatY.uniforms.uBlur.value = blurAmount;
+                blurMatY.uniforms.uBlur.value = effectiveBlur;
                 renderer.setRenderTarget(blurRtY); // 渲染到 RtY
                 renderer.render(blurScene, blurCamera);
 
@@ -6298,6 +6444,7 @@
 
         mediaRecorder: null,
         isRecording: false,
+        blurThrottle: 1.0,
 
         // 🔥 新增：流式写入相关的句柄
         fileHandle: null,
@@ -6493,7 +6640,9 @@
             const bitrate = resolutionP > 1080 ? 40000000 : 12000000;
             const options = {
                 mimeType: mimeType,
-                videoBitsPerSecond: bitrate
+                videoBitsPerSecond: bitrate,
+                // 🔥 新增：明确指定音频比特率（建议 128kbps 或更高）
+                audioBitsPerSecond: 256000
             };
 
             try {
@@ -6558,10 +6707,13 @@
             if (!this.isRecording) return;
             this.isRecording = false;
 
+            this.blurThrottle = 1.0;
+
             if (STATE.isPlaying) togglePlay();
 
             if(this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
                 this.mediaRecorder.stop();
+                this.mediaRecorder.stream.getTracks().forEach(track => track.stop());
             }
             clearInterval(this.checkInterval);
         },
@@ -6677,12 +6829,13 @@
 
                     zSeparation: STATE.zSeparation,
                     noteShape: STATE.noteShape,
-                    cameraView: currentViewParams
+                    cameraView: currentViewParams,
+                    starfieldVisible: document.getElementById('starfieldToggle') ? document.getElementById('starfieldToggle').checked : true
                 },
                 background: {
                     params: BG_STATE,
                     type: currentBgType,
-                    data: currentBgBase64
+                    data: storedBgBase64ForSave
                 },
                 groups: serializedGroups,
                 tracks: STATE.tracks.map(t => ({
@@ -6809,6 +6962,12 @@
                 if (json.settings.cameraView) {
                     ViewMgr.restore(json.settings.cameraView);
                 }
+                const starVisible = (json.settings.starfieldVisible !== undefined)
+                    ? json.settings.starfieldVisible
+                    : true;
+
+                // 调用全局函数设置状态 (它会自动处理 checkbox 和 3D 场景)
+                setStarfieldState(starVisible);
             }
 
             // 2. 恢复背景
@@ -6825,6 +6984,7 @@
                 if (json.background.data && json.background.type) {
                     currentBgBase64 = json.background.data;
                     currentBgType = json.background.type;
+                    storedBgBase64ForSave = json.background.data;
                     applyBackgroundSource(currentBgBase64, currentBgType);
                 }
             } else {
@@ -6834,6 +6994,7 @@
                     bgVideoElement = null;
                 }
                 currentBgBase64 = null;
+                storedBgBase64ForSave = null;
             }
 
             // 3. 恢复编组 (Group)
@@ -6906,6 +7067,8 @@
             }
 
             STATE.nextTrackId = maxTrackId + 1;
+
+            updateTrackZRanks();
 
             updateTotalDuration();
             autoFitZoom(STATE.totalDuration);
@@ -7045,6 +7208,54 @@
 
     // 启动
     initController();
+    window.addEventListener('beforeunload', () => {
+        // 1. 停止动画循环
+        STATE.isPlaying = false;
+
+        // 如果你有保存 animationId，最好在这里 cancelAnimationFrame(id)
+        // 但由于你的 animate 是递归调用的，设置 isPlaying = false
+        // 配合下面的强制置空，通常足够打断循环
+
+        // 2. 停止并释放音频上下文
+        if (DOM.audio) {
+            DOM.audio.pause();
+            DOM.audio.src = "";
+        }
+        if (sharedAudioCtx) {
+            sharedAudioCtx.close().catch(e => {});
+            sharedAudioCtx = null;
+        }
+
+        // 3. 强制清空历史记录栈 (释放巨大的 Base64 字符串)
+        HistoryMgr.undoStack = [];
+        HistoryMgr.redoStack = [];
+
+        // 4. 释放 Three.js 资源 (显存)
+        if (renderer) {
+            renderer.dispose();
+            renderer.forceContextLoss(); // 强制丢失 WebGL 上下文
+            renderer.domElement = null;
+        }
+
+        if (scene) {
+            scene.traverse(object => {
+                if (object.geometry) object.geometry.dispose();
+                if (object.material) {
+                    if (Array.isArray(object.material)) {
+                        object.material.forEach(m => m.dispose());
+                    } else {
+                        object.material.dispose();
+                    }
+                }
+            });
+        }
+
+        // 5. 释放大变量
+        currentBgBase64 = null;
+        STATE.tracks = [];
+        STATE.clips = [];
+    });
+
     init3D();
     initDragAndDrop();
     initResizeHandle();

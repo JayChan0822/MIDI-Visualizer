@@ -28,6 +28,17 @@
     &quot;accountId&quot;: &quot;741649cd-4083-4fd0-9174-d86fda9ad0af&quot;
   }
 }</component>
+  <component name="ProblemsViewState">
+    <hideBySeverity>
+      <option value="11" />
+      <option value="12" />
+      <option value="13" />
+      <option value="14" />
+      <option value="15" />
+      <option value="16" />
+      <option value="100" />
+    </hideBySeverity>
+  </component>
   <component name="ProjectColorInfo">{
   &quot;associatedIndex&quot;: 3
 }</component>
@@ -73,6 +84,7 @@
       <workItem from="1768398747504" duration="8024000" />
       <workItem from="1768449036992" duration="2881000" />
       <workItem from="1768456258675" duration="1810000" />
+      <workItem from="1768458418572" duration="8370000" />
     </task>
     <servers />
   </component>
