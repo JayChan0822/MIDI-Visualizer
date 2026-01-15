@@ -1164,6 +1164,7 @@
         <select id="noteShapeSelect" style="background:#333; color:#fff; border:1px solid #555; border-radius:3px; padding:2px; max-width: 100px;">
             <option value="capsule" selected>Capsule (Default)</option>
             <option value="box">Box (Cube)</option>
+            <option value="box-line">Box (Outlined)</option>
             <option value="cylinder">Cylinder</option>
             <option value="diamond">Diamond</option>
             <option value="hexagon">Hexagon</option>
@@ -1448,6 +1449,9 @@
     varying vec3 vWorldPosition;
     varying vec2 vUv;
 
+    varying vec3 vLocalPos;
+    varying float vHalfLength;
+
     uniform float uPlayheadX;
     uniform float uGlowRadius;
     uniform vec3 uBaseColor;
@@ -1465,6 +1469,11 @@
         } else {
             newPos.x -= aExtraLength * 0.5;
         }
+
+        // 🔥 新增：保存拉伸后的局部坐标
+        vLocalPos = newPos;
+        // 🔥 新增：计算X轴的总半长 (基础0.5 + 拉伸的一半)
+        vHalfLength = 0.5 + aExtraLength * 0.5;
 
         // 🔥 修复报错的关键：手动处理 instanceMatrix
         // Three.js 在编译 ShaderMaterial 时，如果 object 是 InstancedMesh，会自动添加 #define USE_INSTANCING
@@ -1484,6 +1493,8 @@
 <script type="x-shader/x-fragment" id="fragmentShader">
     varying vec3 vWorldPosition;
     varying vec2 vUv;
+    varying vec3 vLocalPos;
+    varying float vHalfLength;
 
     // 只需要这两个颜色：基础暗色 和 最终高光色
     uniform vec3 uBaseColor;
@@ -1491,6 +1502,7 @@
 
     uniform float uPlayheadX;
     uniform float uHighlightWidth;
+    uniform float uShowEdges;
 
     void main() {
         // 1. 计算距离
@@ -1504,6 +1516,31 @@
         // 3. 直接混合：从 BaseColor 到 HighlightColor
         // 没有中间态，没有光晕，干净利落
         vec3 finalColor = mix(uBaseColor, uHighlightColor, intensity);
+
+        if (uShowEdges > 0.5) {
+            float w = 0.03; // 边框粗细 (0.02 - 0.05 之间效果较好)
+
+            // 检测 X 轴两端 (Caps)
+            float edgeX = step(vHalfLength - w, abs(vLocalPos.x));
+            // 检测 Y 轴上下边 (Height) - 盒子默认高度是1，半高0.5
+            float edgeY = step(0.5 - w, abs(vLocalPos.y));
+            // 检测 Z 轴前后边 (Thickness)
+            float edgeZ = step(0.5 - w, abs(vLocalPos.z));
+
+            // 如果任意两个维度是边缘，说明是棱线
+            // 使用 (edgeX + edgeY + edgeZ) >= 2.0 可以只显示棱角
+            // 使用 >= 1.0 会显示面的轮廓
+            // 这里我们用一个更酷的混合：只要靠近任何边缘都高亮
+            float isEdge = max(edgeX, max(edgeY, edgeZ));
+
+            if (isEdge > 0.5) {
+                // 边缘：叠加更亮的白色，做出发光边框感
+                finalColor = mix(finalColor, vec3(1.0), 0.7);
+            } else {
+                // 内部：稍微变暗，增加对比度，让边框更明显
+                finalColor *= 0.6;
+            }
+        }
 
         gl_FragColor = vec4(finalColor, 1.0);
     }
@@ -1709,12 +1746,13 @@
                     const bgType = isUndo ? cmd.oldType : cmd.newType;
 
                     if (bgData) {
+                        // A. 恢复图片
                         applyBackgroundSource(bgData, bgType);
-                        // 恢复后同步更新全局变量
                         currentBgBase64 = bgData;
                         currentBgType = bgType;
+                        setStarfieldState(false); // 关星星
                     } else {
-                        // 如果退回到“无背景”状态
+                        // B. 恢复到无背景（星空）
                         if (bgMesh) bgMesh.visible = false;
                         if (bgMaterial && bgMaterial.uniforms.tMap) bgMaterial.uniforms.tMap.value = null;
                         if (bgVideoElement) {
@@ -1722,8 +1760,20 @@
                             bgVideoElement.src = "";
                             bgVideoElement = null;
                         }
+
+                        // 清空标记
                         currentBgBase64 = null;
                         currentBgType = null;
+
+                        // 🔥🔥🔥 【核心修复】必须清空纹理引用，防止 animate 循环继续渲染旧图 🔥🔥🔥
+                        bgTexture = null;
+
+                        setStarfieldState(true); // 开星星
+
+                        // 🔥 关键：强制刷新尺寸，确保铺满屏幕
+                        requestAnimationFrame(() => {
+                            onResize();
+                        });
                     }
                     break;
 
@@ -1763,30 +1813,36 @@
 
                 case 'clear_visuals':
                     if (isUndo) {
-                        // === 撤回 (恢复) ===
+                        // === 撤回清除 (恢复以前的样子) ===
                         console.log("Undo Clear: Restoring visuals...");
 
-                        // 1. 恢复音符贴图
                         currentNoteTexture = cmd.oldTexture;
                         refreshAllMidiMeshes();
 
-                        // 2. 恢复背景
                         if (cmd.oldBgData) {
-                            // 使用现有的函数重新加载背景
+                            // 恢复以前的背景图
                             applyBackgroundSource(cmd.oldBgData, cmd.oldBgType);
+                            currentBgBase64 = cmd.oldBgData;
+                            currentBgType = cmd.oldBgType;
+                            setStarfieldState(false); // 有图就关星星
+                        } else {
+                            // 以前就是星空，恢复星空
+                            currentBgBase64 = null;
+                            currentBgType = null;
+                            setStarfieldState(true);
+                            // 🔥 强制刷新，确保铺满屏幕
+                            requestAnimationFrame(() => onResize());
                         }
 
                         if (cmd.oldView) {
                             ViewMgr.restore(cmd.oldView);
                         }
                     } else {
-                        // === 重做 (再次清除) ===
+                        // === 重做清除 (再次执行清除) ===
                         console.log("Redo Clear: Clearing visuals again...");
 
-                        // 1. 清除贴图
                         refreshAllMidiMeshes();
 
-                        // 2. 清除背景 (复用清除逻辑)
                         if (bgMesh) bgMesh.visible = false;
                         if (bgMaterial && bgMaterial.uniforms.tMap) bgMaterial.uniforms.tMap.value = null;
                         if (bgVideoElement) {
@@ -1794,9 +1850,16 @@
                             bgVideoElement.src = "";
                             bgVideoElement = null;
                         }
+
+                        // 清空标记
                         currentBgBase64 = null;
                         currentBgType = null;
+
                         ViewMgr.reset();
+                        setStarfieldState(true);
+
+                        // 🔥 强制刷新，确保铺满屏幕
+                        requestAnimationFrame(() => onResize());
                     }
                     break;
 
@@ -2854,6 +2917,7 @@
             // ... (保持原本的形状判断 switch case 代码不变) ...
             switch (STATE.noteShape) {
                 case 'box': geometry = new THREE.BoxGeometry(1, 1, 1); break;
+                case 'box-line': geometry = new THREE.BoxGeometry(1, 1, 1); break;
                 case 'cylinder': geometry = new THREE.CylinderGeometry(0.5, 0.5, 1, 16); geometry.rotateZ(Math.PI / 2); break;
                 case 'hexagon': geometry = new THREE.CylinderGeometry(0.5, 0.5, 1, 6); geometry.rotateZ(Math.PI / 2); break;
                 case 'diamond': geometry = new THREE.OctahedronGeometry(0.5); break;
@@ -2876,7 +2940,8 @@
                     uBaseColor: { value: new THREE.Color(this.track.color).multiplyScalar(0.8) },
                     uActiveColor: { value: new THREE.Color(this.track.color).multiplyScalar(1.5).addScalar(0.3) },
                     uHighlightColor: { value: currentHighlightColor },
-                    uHighlightWidth: { value: currentHighlightWidth }
+                    uHighlightWidth: { value: currentHighlightWidth },
+                    uShowEdges: { value: STATE.noteShape === 'box-line' ? 1.0 : 0.0 }
                 },
                 vertexShader: document.getElementById('vertexShader').textContent,
                 fragmentShader: document.getElementById('fragmentShader').textContent,
@@ -2924,9 +2989,18 @@
 
             geometry.setAttribute('aExtraLength', new THREE.InstancedBufferAttribute(extraLengths, 1));
 
-            this.mesh = new THREE.Group();
-            this.mesh.add(mesh);
-            this.mesh.frustumCulled = false;
+            // 🔥 计算包围球，开启剔除
+            mesh.geometry.computeBoundingSphere();
+            // 由于是 InstancedMesh，我们需要手动扩大包围球以覆盖所有实例
+            // 这是一个简化的估算方法，覆盖整首歌的长度
+            const durationX = this.duration * STATE.playbackSpeed;
+            const centerX = this.startTime * STATE.playbackSpeed + durationX / 2;
+            const radius = Math.max(durationX, 2000); // 估算半径
+
+            mesh.boundingSphere = new THREE.Sphere(new THREE.Vector3(centerX, 0, 0), radius);
+            mesh.frustumCulled = true; // ✅ 开启剔除
+
+            this.mesh = mesh; // 直接赋值
             scene.add(this.mesh);
             this.update3DPosition();
         }
@@ -3686,9 +3760,11 @@
         return geometry;
     }
 
+    const BLUR_SCALE = 0.5;
+
     function initBlurSystem(width, height) {
-        width = Math.max(1, width);
-        height = Math.max(1, height);
+        width = Math.max(1, Math.floor(width * BLUR_SCALE));  // 🔥 强制缩小
+        height = Math.max(1, Math.floor(height * BLUR_SCALE));
         // 1. 创建独立的场景和相机，用于幕后处理
         blurScene = new THREE.Scene();
         blurCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
@@ -3739,7 +3815,7 @@
                 // 范围 -20 到 +20 (41次采样)，配合双通道等效于 41x41 = 1681次采样！
                 float range = min(uBlur, 40.0);
 
-                for(float i = -20.0; i <= 20.0; i++) {
+                for(float i = -10.0; i <= 10.0; i++) {
                     if (abs(i) > range) continue; // 超出半径跳过
 
                     // 核心：沿着 uDirection 方向偏移
@@ -3846,10 +3922,10 @@
                     renderer.domElement.style.height = finalH + 'px';
 
                     // 2. 同步模糊和背景
-                    if (blurRtX) blurRtX.setSize(finalW, finalH);
-                    if (blurRtY) blurRtY.setSize(finalW, finalH);
-                    if (blurMatX) blurMatX.uniforms.uResolution.value.set(finalW, finalH);
-                    if (blurMatY) blurMatY.uniforms.uResolution.value.set(finalW, finalH);
+                    if (blurRtX) blurRtX.setSize(finalW * BLUR_SCALE, finalH * BLUR_SCALE);
+                    if (blurRtY) blurRtY.setSize(finalW * BLUR_SCALE, finalH * BLUR_SCALE);
+                    if (blurMatX) blurMatX.uniforms.uResolution.value.set(finalW * BLUR_SCALE, finalH * BLUR_SCALE);
+                    if (blurMatY) blurMatY.uniforms.uResolution.value.set(finalW * BLUR_SCALE, finalH * BLUR_SCALE);
 
                     updateBackgroundSize();
 
@@ -6118,6 +6194,7 @@
     // ==========================================
     function animate() {
         requestAnimationFrame(animate);
+
         if (starMesh){
             starMesh.rotation.y += 0.0002;
             starMesh.rotation.x += 0.000005
@@ -6125,23 +6202,32 @@
 
         if (STATE.isPlaying) {
             const now = performance.now();
-            const delta = (now - STATE.lastFrameTime) / 1000;
+            let delta = (now - STATE.lastFrameTime) / 1000;
             STATE.lastFrameTime = now;
 
-            // 如果音频正在播放，以音频时间为准修正 Delta，防止漂移
-            if (!DOM.audio.paused && STATE.activeAudioClip) {
+            // 🔥🔥🔥 核心优化：录制时强制锁定为 60 FPS 的步长 🔥🔥🔥
+            // 这样即使电脑渲染 4K 很卡 (例如 10fps)，录出来的视频也是丝滑的 60fps
+            // 代价：录制期间音频听起来会正常，但视频画面是“慢动作”渲染的，
+            // 最终视频里音频可能会因为不同步而显得奇怪，但画面绝对流畅。
+            // 对于视觉展示，画面流畅度优先。
+            if (ExportMgr.isRecording) {
+                delta = 1.0 / 60.0;
+            }
+
+            // 音频同步逻辑 (仅在非录制或性能足够时生效)
+            if (!DOM.audio.paused && STATE.activeAudioClip && !ExportMgr.isRecording) {
                 const clip = STATE.activeAudioClip;
                 const rawVisualTime = DOM.audio.currentTime - (clip.trimOffset || 0);
                 const audioBasedTime = rawVisualTime + clip.startTime;
                 const timeDiff = Math.abs(STATE.currentTime - audioBasedTime);
 
-                // 如果差距超过 0.5 秒（说明切屏了或者严重卡顿），直接瞬移，不要 Lerp
                 if (timeDiff > 0.5) {
                     STATE.currentTime = audioBasedTime;
                 } else {
                     STATE.currentTime = THREE.MathUtils.lerp(STATE.currentTime, audioBasedTime, 0.5);
                 }
             } else {
+                // 录制模式下纯靠 delta 累加，保证画面不跳跃
                 STATE.currentTime += delta;
             }
 
@@ -6278,45 +6364,44 @@
         },
 
         async startRecording() {
+            // 🔥🔥🔥 核心修复 1: 先立 flag，防止 CSS 变动触发 onResize 捣乱 🔥🔥🔥
+            this.isRecording = true;
+            this.statusEl.style.display = 'flex';
+
             this.modal.style.display = 'none';
+
+            // 自动回滚逻辑
+            if (STATE.currentTime >= STATE.totalDuration - 0.5) {
+                seekTo(0);
+            }
 
             this.wasBgVisible = bgMesh ? bgMesh.visible : false;
             this.forcedBgVisible = false;
 
             const isStarfieldOn = document.getElementById('starfieldToggle').checked;
 
-            // 如果没有自定义背景图(currentBgType为空)，且星空开关开了
             if (!currentBgType && isStarfieldOn && bgMesh && bgMaterial) {
-
-                // 1. 强制赋予纹理 (这步最关键，之前缺了这个)
                 if (window.starfieldBgTexture) {
                     bgMaterial.uniforms.tMap.value = window.starfieldBgTexture;
                 }
-
-                // 2. 重置 Shader 参数，确保原色显示
                 bgMaterial.uniforms.uOpacity.value = 1.0;
                 bgMaterial.uniforms.uBrightness.value = 0.0;
                 bgMaterial.uniforms.uContrast.value = 1.0;
-
-                // 3. 强制设置为铺满 (Cover)
                 BG_STATE.fit = 'cover';
                 updateBackgroundUV();
-
-                // 4. 让它可见
                 bgMesh.visible = true;
-                this.forcedBgVisible = true; // 标记一下，录完要关掉
+                this.forcedBgVisible = true;
             }
-            // 如果用户自己传了图，那保持原样即可
             else if (bgMesh && this.wasBgVisible) {
                 bgMesh.visible = true;
             }
-            // --- 1. 获取参数 ---
+
+            // 获取导出参数
             const ratio = parseFloat(document.getElementById('exportRatio').value);
             const resolutionP = parseInt(document.getElementById('exportRes').value);
             const fps = parseInt(document.getElementById('exportFps').value);
             const mimeType = document.getElementById('exportFormat').value;
 
-            // 计算宽高
             let width, height;
             if (ratio >= 1) {
                 height = resolutionP;
@@ -6325,23 +6410,19 @@
                 width = resolutionP;
                 height = Math.round(width / ratio);
             }
-            // 偶数修正
             width = width % 2 === 0 ? width : width + 1;
             height = height % 2 === 0 ? height : height + 1;
 
-            // --- 🔥 核心优化步骤 1: 提前让用户选择保存位置 (建立硬盘通道) ---
+            // --- 流式写入初始化 ---
             this.isStreamMode = false;
             this.fileHandle = null;
             this.writableStream = null;
-            this.chunks = []; // 清空备用数组
+            this.chunks = [];
 
-            // 只有 Chrome/Edge 等现代浏览器支持 showSaveFilePicker
             if (window.showSaveFilePicker) {
                 try {
                     const isMp4 = mimeType.includes('mp4');
                     const ext = isMp4 ? '.mp4' : '.webm';
-
-                    // 提前弹出保存框
                     this.fileHandle = await window.showSaveFilePicker({
                         suggestedName: `SeeMusic_${new Date().getTime()}${ext}`,
                         types: [{
@@ -6349,65 +6430,80 @@
                             accept: isMp4 ? {'video/mp4': ['.mp4']} : {'video/webm': ['.webm']}
                         }],
                     });
-
-                    // 创建可写流
                     this.writableStream = await this.fileHandle.createWritable();
                     this.isStreamMode = true;
-                    console.log("✅ 流式写入模式已激活：直接写入硬盘，不占用内存");
-
                 } catch (err) {
-                    if (err.name === 'AbortError') return; // 用户取消
+                    if (err.name === 'AbortError') {
+                        this.cleanup(); // 如果取消保存，记得清理状态
+                        this.isRecording = false; // 复位标记
+                        return;
+                    }
                     console.warn("无法建立文件流，降级为内存模式:", err);
                 }
-            } else {
-                console.warn("浏览器不支持 File System API，降级为内存模式");
-                alert("注意：当前浏览器不支持流式写入，录制超长4K视频可能导致崩溃。建议使用 Chrome/Edge 桌面版。");
             }
 
-            // --- 2. 准备场景 ---
+            // --- 设置场景参数 ---
             const canvas = renderer.domElement;
             this.originalSize.width = canvas.width;
             this.originalSize.height = canvas.height;
             this.originalPixelRatio = renderer.getPixelRatio();
 
-            this.originalClearAlpha = renderer.getClearAlpha();
-
-
             renderer.setClearColor(0x000000, 1.0);
 
-            renderer.setPixelRatio(2.0);
+            // 🔥🔥🔥 核心修复 2: 强制 1.0 像素比，确保 1080p 就是 1080p 🔥🔥🔥
+            renderer.setPixelRatio(1.0);
             renderer.setSize(width, height);
+
+            // 模糊系统缩放 (配合之前建议的 BLUR_SCALE 使用，建议设为 0.5)
+            // 确保你已经定义了全局的 BLUR_SCALE (在代码顶部)
+            const bScale = (typeof BLUR_SCALE !== 'undefined') ? BLUR_SCALE : 0.5;
+
+            if (blurRtX) blurRtX.setSize(width * bScale, height * bScale);
+            if (blurRtY) blurRtY.setSize(width * bScale, height * bScale);
+            if (blurMatX) blurMatX.uniforms.uResolution.value.set(width * bScale, height * bScale);
+            if (blurMatY) blurMatY.uniforms.uResolution.value.set(width * bScale, height * bScale);
+
+            // 锁定 CSS 样式 (这可能会触发 resize，但因为 isRecording=true，会被 onResize 拦截)
             document.getElementById('canvas-wrapper').classList.add('recording-mode');
+
             camera.aspect = ratio;
             camera.updateProjectionMatrix();
             updateBackgroundSize();
             updateBackgroundUV();
 
-            // --- 3. 音频设置 ---
+            // --- 音频节点 ---
             if (!this.audioContext) this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
             if (this.audioContext.state === 'suspended') await this.audioContext.resume();
 
             if (!this.sourceNode && DOM.audio) {
                 try {
                     this.sourceNode = this.audioContext.createMediaElementSource(DOM.audio);
-                    this.destNode = this.audioContext.createMediaStreamDestination();
-                    this.sourceNode.connect(this.destNode);
                     this.sourceNode.connect(this.audioContext.destination);
                 } catch (e) { console.warn(e); }
             }
 
-            // --- 4. 创建 MediaRecorder ---
-            const canvasStream = canvas.captureStream(fps); // 强制指定 FPS
+            if (this.sourceNode) {
+                if (this.destNode) {
+                    try { this.sourceNode.disconnect(this.destNode); } catch(e) {}
+                }
+                this.destNode = this.audioContext.createMediaStreamDestination();
+                this.sourceNode.connect(this.destNode);
+            }
+
+            // --- 开始录制 ---
+            const canvasStream = canvas.captureStream(0); // 0 = 手动驱动
             this.videoTrack = canvasStream.getVideoTracks()[0];
             const tracks = [...canvasStream.getVideoTracks()];
+
             if (this.destNode) tracks.push(...this.destNode.stream.getAudioTracks());
+
             const combinedStream = new MediaStream(tracks);
 
+            // 提高码率上限
+            const bitrate = resolutionP > 1080 ? 40000000 : 12000000;
             const options = {
                 mimeType: mimeType,
-                // 🔥 4K 建议码率：太高会卡，太低会糊。
-                // 1080p: 8Mbps, 4K: 25Mbps 左右通常足够
-                videoBitsPerSecond: resolutionP > 1080 ? 25000000 : 8000000
+                videoBitsPerSecond: bitrate
             };
 
             try {
@@ -6416,19 +6512,16 @@
                 this.mediaRecorder = new MediaRecorder(combinedStream);
             }
 
-            // --- 🔥 核心优化步骤 2: 数据处理逻辑 ---
             this.mediaRecorder.ondataavailable = async (e) => {
                 if (e.data && e.data.size > 0) {
                     if (this.isStreamMode && this.writableStream) {
-                        // A. 流式模式：直接写入硬盘，然后扔掉内存引用
                         try {
                             await this.writableStream.write(e.data);
                         } catch (err) {
                             console.error("写入失败:", err);
-                            this.stopRecording(); // 出错立即停止
+                            this.stopRecording();
                         }
                     } else {
-                        // B. 内存模式 (旧逻辑)：存入数组
                         this.chunks.push(e.data);
                     }
                 }
@@ -6436,43 +6529,32 @@
 
             this.mediaRecorder.onstop = async () => {
                 if (this.isStreamMode && this.writableStream) {
-                    // A. 流式模式：关闭流，文件自动保存完成
-                    console.log("录制结束，正在关闭文件流...");
                     await this.writableStream.close();
                     this.fileHandle = null;
                     this.writableStream = null;
-                    alert("视频已保存到您选择的位置！");
+                    alert("视频已保存！");
                 } else {
-                    // B. 内存模式：合并 Blob 并下载
-                    console.log("正在合并内存数据...");
                     const blob = new Blob(this.chunks, { type: this.mediaRecorder.mimeType });
                     const url = URL.createObjectURL(blob);
                     const a = document.createElement('a');
                     a.style.display = 'none';
                     a.href = url;
-                    a.download = `SeeMusic_Memory_${new Date().getTime()}.webm`;
+                    a.download = `SeeMusic_Export_${new Date().getTime()}.webm`;
                     document.body.appendChild(a);
                     a.click();
                     setTimeout(() => {
                         document.body.removeChild(a);
                         window.URL.revokeObjectURL(url);
-                        this.chunks = []; // 释放内存
+                        this.chunks = [];
                     }, 100);
                 }
                 this.cleanup();
             };
 
-            // --- 5. 启动 ---
-            this.isRecording = true;
-            this.statusEl.style.display = 'flex';
             this.recTotalEl.innerText = formatTime(STATE.totalDuration);
-
-            // 🔥 关键：设置 timeslice (例如 1000ms)
-            // 告诉 recorder 每 1 秒吐出一次数据，而不是等录完了一次性吐出。
-            // 这样我们才能源源不断地往硬盘里写。
             this.mediaRecorder.start(1000);
 
-            togglePlay();
+            if (!STATE.isPlaying) togglePlay();
 
             this.checkInterval = setInterval(() => {
                 this.recTimeEl.innerText = formatTime(STATE.currentTime);
