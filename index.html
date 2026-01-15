@@ -4054,10 +4054,12 @@
                     renderer.domElement.style.height = finalH + 'px';
 
                     // 2. 同步模糊和背景
-                    if (blurRtX) blurRtX.setSize(finalW * BLUR_SCALE, finalH * BLUR_SCALE);
-                    if (blurRtY) blurRtY.setSize(finalW * BLUR_SCALE, finalH * BLUR_SCALE);
-                    if (blurMatX) blurMatX.uniforms.uResolution.value.set(finalW * BLUR_SCALE, finalH * BLUR_SCALE);
-                    if (blurMatY) blurMatY.uniforms.uResolution.value.set(finalW * BLUR_SCALE, finalH * BLUR_SCALE);
+                    if (!isDrag) {
+                        if (blurRtX) blurRtX.setSize(finalW * BLUR_SCALE, finalH * BLUR_SCALE);
+                        if (blurRtY) blurRtY.setSize(finalW * BLUR_SCALE, finalH * BLUR_SCALE);
+                        if (blurMatX) blurMatX.uniforms.uResolution.value.set(finalW * BLUR_SCALE, finalH * BLUR_SCALE);
+                        if (blurMatY) blurMatY.uniforms.uResolution.value.set(finalW * BLUR_SCALE, finalH * BLUR_SCALE);
+                    }
 
                     updateBackgroundSize();
 
@@ -6365,19 +6367,10 @@
         }
 
         if (STATE.isPlaying) {
-            // 🔥【核心修复】录制时强制使用固定帧率 (Fixed Time Step)
-            // 这解决了两个问题：
-            // 1. 修复了 delta 为 0 导致进度条卡住的问题。
-            // 2. 即使渲染慢，导出的视频也能保持完美的 60FPS，不会掉帧。
-            if (ExportMgr.isRecording) {
-                const fpsVal = document.getElementById('exportFps') ? parseInt(document.getElementById('exportFps').value) : 60;
-                delta = 1.0 / fpsVal;
-            }
-
             // --- 时间累加逻辑 ---
 
             // 情况 A: 正常播放且有音频 -> 视觉对齐音频 (Sync to Audio)
-            if (!ExportMgr.isRecording && !DOM.audio.paused && STATE.activeAudioClip) {
+            if (!DOM.audio.paused && STATE.activeAudioClip) {
                 const clip = STATE.activeAudioClip;
                 // 计算音频当前的真实播放时间对应的工程时间
                 const rawVisualTime = DOM.audio.currentTime - (clip.trimOffset || 0);
@@ -6386,7 +6379,7 @@
                 const timeDiff = Math.abs(STATE.currentTime - audioBasedTime);
 
                 // 如果误差太大(>0.5s)，直接瞬移纠正；否则平滑插值纠正
-                if (timeDiff > 0.5) {
+                if (Math.abs(STATE.currentTime - audioBasedTime) > 0.5) {
                     STATE.currentTime = audioBasedTime;
                 } else {
                     STATE.currentTime = THREE.MathUtils.lerp(STATE.currentTime, audioBasedTime, 0.5);
@@ -6475,12 +6468,6 @@
         }
 
         renderer.render(scene, camera);
-
-        // --- 录制帧捕获 ---
-        if (ExportMgr.isRecording && ExportMgr.videoTrack) {
-            // 告诉浏览器："这一帧画好了，立刻把它送到录制器里"
-            ExportMgr.videoTrack.requestFrame();
-        }
     }
 
     const ExportMgr = {
@@ -6675,8 +6662,7 @@
             }
 
             // --- 开始录制 ---
-            const canvasStream = canvas.captureStream(0); // 0 = 手动驱动
-            this.videoTrack = canvasStream.getVideoTracks()[0];
+            const canvasStream = canvas.captureStream(fps);
             const tracks = [...canvasStream.getVideoTracks()];
 
             if (this.destNode) tracks.push(...this.destNode.stream.getAudioTracks());
@@ -6684,7 +6670,7 @@
             const combinedStream = new MediaStream(tracks);
 
             // 提高码率上限
-            const bitrate = resolutionP > 1080 ? 40000000 : 12000000;
+            const bitrate = resolutionP > 1080 ? 25000000 : 12000000;
             const options = {
                 mimeType: mimeType,
                 videoBitsPerSecond: bitrate,
