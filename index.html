@@ -955,7 +955,7 @@
                 <span class="logo-text title-main">MIDI</span>
                 <span class="logo-text title-sub">Visualizer</span>
             </div>
-            <span class="version-tag">v1.5.0</span>
+            <span class="version-tag">v1.5.1</span>
         </div>
 
         <div class="toolbar-separator"></div>
@@ -1325,11 +1325,17 @@
 <div id="version-modal" style="display:none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 6000; justify-content: center; align-items: center;">
     <div class="modal-content" style="width: 400px !important;">
         <h3 style="border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 15px;">
-            MIDI Visualizer <span style="font-size: 12px; color: #888; font-weight: normal;">v1.5.0</span>
+            MIDI Visualizer <span style="font-size: 12px; color: #888; font-weight: normal;">v1.5.1</span>
         </h3>
 
         <div style="height: 250px; overflow-y: auto; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px; margin-bottom: 20px;">
-            <p style="color: #aaa; font-size: 12px; margin-top: 0;">2026-01-15 1.5.0 (Current)</p>
+            <p style="color: #aaa; font-size: 12px; margin-top: 0;">2026-01-16 1.5.1 (Current)</p>
+            <ul style="padding-left: 20px; color: #ddd; line-height: 1.6;">
+                <li>新增：box-line (Outlined) 音符样式</li>
+                <li>优化：增强录制稳定性</li>
+            </ul>
+
+            <p style="color: #aaa; font-size: 12px; margin-top: 0;">2026-01-15 1.5.0</p>
             <ul style="padding-left: 20px; color: #ddd; line-height: 1.6;">
                 <li>新增：3D 星空背景 (Starfield)，支持 UI 开关控制</li>
                 <li>优化：快捷键指南、视角参数折叠状态记忆</li>
@@ -1492,57 +1498,42 @@
 
 <script type="x-shader/x-fragment" id="fragmentShader">
     varying vec3 vWorldPosition;
-    varying vec2 vUv;
     varying vec3 vLocalPos;
     varying float vHalfLength;
 
-    // 只需要这两个颜色：基础暗色 和 最终高光色
     uniform vec3 uBaseColor;
     uniform vec3 uHighlightColor;
-
     uniform float uPlayheadX;
     uniform float uHighlightWidth;
     uniform float uShowEdges;
 
     void main() {
-        // 1. 计算距离
+        // 1. 计算与播放线的距离衰减
         float dist = abs(vWorldPosition.x - uPlayheadX);
-
-        // 2. 核心算法 (高斯衰减)
-        // 使用 uHighlightWidth 直接控制衰减速率
-        // 宽度越大，分母越大，衰减越慢，光越宽
         float intensity = exp(-dist * 2.0 / max(0.1, uHighlightWidth));
-
-        // 3. 直接混合：从 BaseColor 到 HighlightColor
-        // 没有中间态，没有光晕，干净利落
         vec3 finalColor = mix(uBaseColor, uHighlightColor, intensity);
 
+        // 2. 棱角线渲染逻辑
         if (uShowEdges > 0.5) {
-            float w = 0.03; // 边框粗细 (0.02 - 0.05 之间效果较好)
+            float w = 0.05; // 线条粗细系数，0.05 较适中
 
-            // 检测 X 轴两端 (Caps)
+            // 检测局部坐标是否位于各轴边缘
             float edgeX = step(vHalfLength - w, abs(vLocalPos.x));
-            // 检测 Y 轴上下边 (Height) - 盒子默认高度是1，半高0.5
             float edgeY = step(0.5 - w, abs(vLocalPos.y));
-            // 检测 Z 轴前后边 (Thickness)
             float edgeZ = step(0.5 - w, abs(vLocalPos.z));
 
-            // 如果任意两个维度是边缘，说明是棱线
-            // 使用 (edgeX + edgeY + edgeZ) >= 2.0 可以只显示棱角
-            // 使用 >= 1.0 会显示面的轮廓
-            // 这里我们用一个更酷的混合：只要靠近任何边缘都高亮
-            float isEdge = max(edgeX, max(edgeY, edgeZ));
-
-            if (isEdge > 0.5) {
-                // 边缘：叠加更亮的白色，做出发光边框感
-                finalColor = mix(finalColor, vec3(1.0), 0.7);
+            // 核心算法：当至少两个维度处于边缘时，判定为“棱线”
+            if ((edgeX + edgeY + edgeZ) >= 2.0) {
+                // 棱线：使用亮色并叠加白色发光感
+                gl_FragColor = vec4(finalColor + vec3(1.0), 1.0);
             } else {
-                // 内部：稍微变暗，增加对比度，让边框更明显
-                finalColor *= 0.6;
+                // 内部填充：大幅减弱亮度，产生中空/透明感
+                gl_FragColor = vec4(finalColor * 1.0, 0.8);
             }
+        } else {
+            // 普通模式 (Capsule/Box 填充)
+            gl_FragColor = vec4(finalColor, 1.0);
         }
-
-        gl_FragColor = vec4(finalColor, 1.0);
     }
 </script>
 
@@ -6247,11 +6238,15 @@
         // 更新 Shader Uniforms
         const playheadX = STATE.currentTime * STATE.playbackSpeed;
         STATE.clips.forEach(clip => {
-            if (clip.mesh && clip.mesh.children[0].material && clip.mesh.children[0].material.uniforms) {
-                // 注意：Shader 中的 uPlayheadX 是世界坐标
-                // 我们的 Mesh 是放在 group 里的，group 已经有了 clip.startTime 的偏移
-                // 所以传递给 shader 的 playhead 应该是世界坐标
-                clip.mesh.children[0].material.uniforms.uPlayheadX.value = playheadX;
+            // 1. 使用可选链 ?. 确保每一级都存在
+            const meshChild = clip.mesh?.children?.[0] || clip.mesh;
+
+            // 2. 只有当对象确实是 Mesh 且拥有 ShaderMaterial 材质时才更新
+            if (meshChild && meshChild.material && meshChild.material.uniforms) {
+                // 3. 检查 uniforms 中是否存在 uPlayheadX 变量
+                if (meshChild.material.uniforms.uPlayheadX) {
+                    meshChild.material.uniforms.uPlayheadX.value = playheadX;
+                }
             }
         });
 
