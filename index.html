@@ -2514,6 +2514,9 @@
                             this.groupId = null;
                         }
                         this.refreshColor();
+                        if (!STATE.isPlaying) {
+                            renderer.render(scene, camera);
+                        }
                     }
                 );
             });
@@ -2607,6 +2610,9 @@
             this.clips.forEach(clip => {
                 clip.updateColor(finalColor);
             });
+            if (typeof renderer !== 'undefined' && !STATE.isPlaying) {
+                renderer.render(scene, camera);
+            }
         }
 
         addClip(start, duration, data, name, sourceFile = null) {
@@ -2807,31 +2813,29 @@
             }
         }
 
-        // 在 class Clip 中
         updateColor(color) {
-            // 1. 更新 DOM (2D 块) 样式
             if(this.dom) {
                 this.dom.style.backgroundColor = hexToRgba(color, 0.5);
                 this.dom.style.borderColor = color;
             }
-
             this.drawThumbnail();
 
-            // 2. 🔥 新增：直接更新 3D 材质颜色 (无需重建)
-            if (this.mesh && this.mesh.children.length > 0) {
-                const object = this.mesh.children[0]; // 获取 Group 里的 Mesh/Line
-
-                if (this.track.type === 'audio') {
-                    // Audio 使用的是 LineBasicMaterial
-                    if (object.material) {
-                        object.material.color.set(color);
+            if (this.mesh) {
+                // 如果是 MIDI (ShaderMaterial)
+                if (this.track.type === 'midi') {
+                    // 注意：InstancedMesh 的材质在 mesh.material
+                    const mat = this.mesh.material;
+                    if (mat && mat.uniforms) {
+                        // 直接使用 .set() 方法更新，这样不会丢失引用
+                        mat.uniforms.uBaseColor.value.set(color).multiplyScalar(0.8);
+                        mat.uniforms.uActiveColor.value.set(color).multiplyScalar(1.5).addScalar(0.3);
+                        // 标记材质需要更新（可选，通常更新 value 即可）
                     }
-                } else {
-                    // MIDI 使用的是 ShaderMaterial
-                    if (object.material && object.material.uniforms) {
-                        object.material.uniforms.uBaseColor.value.set(color).multiplyScalar(0.5);
-                        object.material.uniforms.uActiveColor.value.set(color).addScalar(0.2);
-                    }
+                }
+                // 如果是 Audio (MeshBasicMaterial)
+                else {
+                    const mat = this.mesh.children[0].material;
+                    if (mat) mat.color.set(color);
                 }
             }
         }
