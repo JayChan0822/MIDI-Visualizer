@@ -983,7 +983,7 @@
                 <span class="logo-text title-main">MIDI</span>
                 <span class="logo-text title-sub">Visualizer</span>
             </div>
-            <span class="version-tag">v1.6.0</span>
+            <span class="version-tag">v1.6.1</span>
         </div>
 
         <div class="toolbar-separator"></div>
@@ -1161,22 +1161,22 @@
 <div id="bottom-controls">
 
     <div class="slider-group">
-        <span>W-Scale:</span>
+        <span>W-Scale: <span id="val-sceneZoom" style="color:#fff; margin-left:2px;">20</span></span>
         <input type="range" id="sceneZoom" min="1" max="100" value="20">
     </div>
 
     <div class="slider-group">
-        <span>H-Scale:</span>
+        <span>H-Scale: <span id="val-height" style="color:#fff; margin-left:2px;">1.5</span></span>
         <input type="range" id="heightSlider" min="1" max="600" value="150">
     </div>
 
     <div class="slider-group">
-        <span>Thickness:</span>
+        <span>Thickness: <span id="val-thickness" style="color:#fff; margin-left:2px;">1.0</span></span>
         <input type="range" id="thicknessSlider" min="1" max="300" value="100">
     </div>
 
     <div class="slider-group">
-        <span>Z-Space:</span>
+        <span>Z-Space: <span id="val-zSpace" style="color:#fff; margin-left:2px;">0.5</span></span>
         <input type="range" id="zSpaceSlider" min="0" max="200" value="5">
     </div>
 
@@ -1207,7 +1207,6 @@
     </div>
 
     <button id="resetViewBtn" class="btn" style="margin-left: 15px; height: 24px; line-height: 1;">↺ 重置参数</button>
-
 </div>
 
 <div id="bg-settings-modal" style="display:none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 3000; justify-content: center; align-items: center;">
@@ -1377,12 +1376,18 @@
                 text-shadow: none;   /* 去掉可能的文字阴影 */
                 line-height: 1.2;
             ">
-                v1.6.0
+                v1.6.1
             </span>
         </h3>
 
         <div style="height: 250px; overflow-y: auto; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px; margin-bottom: 20px;">
-            <p style="color: #aaa; font-size: 12px; margin-top: 0;">2026-01-17 1.6.0 (Current)</p>
+            <p style="color: #aaa; font-size: 12px; margin-top: 0;">2026-01-17 1.6.1 (Current)</p>
+            <ul style="padding-left: 20px; color: #ddd; line-height: 1.6;">
+                <li>新增：导入导出视角预设 (View Preset JSON) 包括底部滑块数值</li>
+                <li>优化：底部参数滑块 (Scale, Thickness, Z-Space) 现已支持数值显示</li>
+            </ul>
+
+            <p style="color: #aaa; font-size: 12px; margin-top: 0;">2026-01-17 1.6.0</p>
             <ul style="padding-left: 20px; color: #ddd; line-height: 1.6;">
                 <li>新增：事件选择 - 支持拖拽框选多个 Clip，配合 Shift 键可增量加选</li>
                 <li>优化：背景视频时间线同步 - 背景视频现已与时间轴完全对齐，不再独立播放</li>
@@ -1620,6 +1625,7 @@
 
     let sharedAudioCtx = null;
     let starMesh = null; // 全局星星对象
+    let activeShaderMaterials = [];
 
     let currentHighlightColor = new THREE.Color(1, 1, 1);
     let currentHighlightWidth = 50.0;
@@ -2372,11 +2378,20 @@
     // ✨ 新增：创建星空函数 (带圆形光晕贴图)
     function initStarfield() {
         const starGeo = new THREE.BufferGeometry();
-        const starCount = 40000; // 星星数量
+        const starCount = 80000; // 星星数量
         const posArray = new Float32Array(starCount * 3);
+        const range = 4000;
 
-        for(let i = 0; i < starCount * 3; i++) {
-            posArray[i] = (Math.random() - 0.5) * 2000;
+        for(let i = 0; i < starCount; i++) {
+            const i3 = i * 3;
+            // 🔥 修复步骤 2：
+            // 必须确保 X 轴的随机分布填满整个 range (-2000 到 +2000)
+            // 之前的代码只生成了 -1000 到 +1000，导致了空隙
+            posArray[i3]     = (Math.random() - 0.5) * range;
+
+            // Y 和 Z 轴保持原有视野高度即可 (这里设为 2500 以防穿帮)
+            posArray[i3 + 1] = (Math.random() - 0.5) * 2500;
+            posArray[i3 + 2] = (Math.random() - 0.5) * 1500; // Z轴深度
         }
 
         starGeo.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
@@ -2400,13 +2415,48 @@
         const starTexture = new THREE.CanvasTexture(canvas);
 
         // 🎨 2. 设置材质
-        const starMat = new THREE.PointsMaterial({
-            size: 4.0,             // 🔥 稍微调大一点，录制出来才不会是单像素噪点
-            map: starTexture,
-            color: 0xffffff,
+        const starMat = new THREE.ShaderMaterial({
+            uniforms: {
+                uCamX: { value: 0.0 },     // 相机当前的 X 位置
+                uRange: { value: range },  // 星空盒子的总宽度
+                uMap: { value: starTexture },
+                uSize: { value: 6.0 }      // 星星大小
+            },
+            vertexShader: `
+            uniform float uCamX;
+            uniform float uRange;
+            uniform float uSize;
+
+            void main() {
+                vec3 pos = position;
+
+                // --- 无限星空核心算法 ---
+                // 1. 计算星星相对于相机的距离
+                float diff = pos.x - uCamX;
+
+                // 2. 使用模运算 (mod) 让星星在相机前后循环出现
+                // 当星星落后相机 range/2 时，自动加 range 瞬移到前方
+                float wrappedDiff = mod(diff + uRange * 0.5, uRange) - uRange * 0.5;
+
+                // 3. 计算最终的世界坐标：相机位置 + 循环后的相对偏移
+                vec3 finalPos = vec3(uCamX + wrappedDiff, pos.y, pos.z);
+
+                vec4 mvPosition = viewMatrix * vec4(finalPos, 1.0);
+                gl_Position = projectionMatrix * mvPosition;
+
+                // 大小随距离衰减
+                gl_PointSize = uSize * (300.0 / -mvPosition.z);
+            }
+        `,
+            fragmentShader: `
+            uniform sampler2D uMap;
+            void main() {
+                vec4 texColor = texture2D(uMap, gl_PointCoord);
+                if (texColor.a < 0.1) discard; // 透明剔除
+                gl_FragColor = texColor;
+            }
+        `,
             transparent: true,
-            opacity: 1.0,          // 保持高不透明度
-            sizeAttenuation: true,
             depthWrite: false,
             blending: THREE.AdditiveBlending
         });
@@ -2448,8 +2498,6 @@
 
         window.starfieldBgTexture = new THREE.CanvasTexture(bgCanvas);
         window.starfieldBgTexture.encoding = THREE.sRGBEncoding;
-
-        // 优化贴图过滤模式，进一步平滑
         window.starfieldBgTexture.minFilter = THREE.LinearFilter;
         window.starfieldBgTexture.magFilter = THREE.LinearFilter;
     }
@@ -3104,6 +3152,7 @@
                 depthTest: true,
                 depthWrite: true
             });
+            activeShaderMaterials.push(material);
 
             const mesh = new THREE.InstancedMesh(geometry, material, notes.length);
             mesh.frustumCulled = false;
@@ -3282,6 +3331,8 @@
                             const mats = Array.isArray(child.material) ? child.material : [child.material];
 
                             mats.forEach(m => {
+                                const idx = activeShaderMaterials.indexOf(m);
+                                if (idx > -1) activeShaderMaterials.splice(idx, 1);
                                 // 释放材质本身
                                 m.dispose();
 
@@ -3810,7 +3861,7 @@
         renderer.outputEncoding = THREE.sRGBEncoding;
         renderer.setClearColor(0x000000, 0);
         renderer.setSize(width, height);
-        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
         wrapper.appendChild(renderer.domElement);
 
         controls = new OrbitControls(camera, renderer.domElement);
@@ -4598,6 +4649,25 @@
             });
         }
 
+        const CURRENT_VERSION = '1.6.1'; // 👈 请确保这里与 HTML 标题一致
+        const STORAGE_KEY = 'mv_last_seen_version';
+
+        // 读取本地存储的旧版本号
+        const lastSeenVersion = localStorage.getItem(STORAGE_KEY);
+
+        // 如果从没存过(新用户) 或者 存的版本不等于当前版本(更新了)
+        if (lastSeenVersion !== CURRENT_VERSION) {
+            if (versionModal) {
+                // 1. 弹出窗口
+                versionModal.style.display = 'flex';
+
+                // 2. 立即写入新版本号，防止刷新后重复弹出
+                localStorage.setItem(STORAGE_KEY, CURRENT_VERSION);
+
+                console.log(`检测到新版本/首次访问: ${CURRENT_VERSION} (旧记录: ${lastSeenVersion})`);
+            }
+        }
+
         const starToggle = document.getElementById('starfieldToggle');
         if (starToggle) {
             starToggle.addEventListener('change', (e) => {
@@ -4898,28 +4968,45 @@
             processBackgroundFile(e.target.files[0]);
         });
 
+        // 1. Thickness 滑块
         document.getElementById('thicknessSlider').addEventListener('input', (e) => {
-            // 0.1 到 2.0 倍
-            STATE.noteThickness = parseInt(e.target.value) / 100;
-            // 重建 3D 场景
+            const val = parseInt(e.target.value);
+            STATE.noteThickness = val / 100;
+
+            // 🔥 新增：更新显示的数值
+            const displayVal = STATE.noteThickness.toFixed(1);
+            const textEl = document.getElementById('val-thickness');
+            if(textEl) textEl.innerText = displayVal;
+
             STATE.clips.forEach(c => c.build3D());
-            updateAllTracksVisibility(); // 🔥 确保重建后刷新可见性
+            updateAllTracksVisibility();
         });
 
+        // 2. Height Scale 滑块
         document.getElementById('heightSlider').addEventListener('input', (e) => {
-            STATE.noteHeightScale = parseInt(e.target.value) / 100;
-            // 重建所有 Clip 的 3D 模型
+            const val = parseInt(e.target.value);
+            STATE.noteHeightScale = val / 100;
+
+            // 🔥 新增：更新显示的数值
+            const displayVal = STATE.noteHeightScale.toFixed(1);
+            const textEl = document.getElementById('val-height');
+            if(textEl) textEl.innerText = displayVal;
+
             STATE.clips.forEach(c => c.build3D());
-            updateAllTracksVisibility(); // 🔥 确保重建后刷新可见性
+            updateAllTracksVisibility();
         });
 
+        // 3. Z-Space 滑块
         document.getElementById('zSpaceSlider').addEventListener('input', (e) => {
-            // 滑块值 0-200，除以 10 得到 0.0 - 20.0 的范围
-            STATE.zSeparation = parseInt(e.target.value) / 10;
+            const val = parseInt(e.target.value);
+            STATE.zSeparation = val / 10;
+
+            // 🔥 新增：更新显示的数值
+            const displayVal = STATE.zSeparation.toFixed(1);
+            const textEl = document.getElementById('val-zSpace');
+            if(textEl) textEl.innerText = displayVal;
 
             updateTrackZRanks();
-
-            // 重建所有 MIDI 模型的 3D 形态
             STATE.clips.forEach(c => c.build3D());
             updateAllTracksVisibility();
         });
@@ -4930,6 +5017,9 @@
             // 1. 获取旧速度和新速度
             const oldSpeed = STATE.playbackSpeed;
             const newSpeed = parseInt(e.target.value);
+
+            const textEl = document.getElementById('val-sceneZoom');
+            if(textEl) textEl.innerText = newSpeed;
 
             STATE.playbackSpeed = newSpeed;
 
@@ -4946,9 +5036,6 @@
             // 4. 立即修正相机和控制器的位置
             camera.position.x += delta;
             controls.target.x += delta;
-
-            // 5. 🔥 关键：同步全局追踪变量
-            // 这告诉 animate() 循环："相机已经到新位置了，下一帧不要再重复计算这个位移了"
             cameraTargetX = newFocusX;
         });
 
@@ -5436,10 +5523,17 @@
 
         async exportToFile() {
             const s = this.getCurrentSpherical();
+            const sceneParams = {
+                wScale: DOM.sceneZoom ? DOM.sceneZoom.value : 20,
+                hScale: document.getElementById('heightSlider').value,
+                thickness: document.getElementById('thicknessSlider').value,
+                zSpace: document.getElementById('zSpaceSlider').value
+            };
             const data = {
                 name: "SeeMusic Spherical View",
                 timestamp: new Date().toISOString(),
-                params: s
+                params: s,
+                sceneSettings: sceneParams
             };
             const jsonStr = JSON.stringify(data, null, 2);
 
@@ -5489,7 +5583,7 @@
 
                         // 🔥 修改：记录历史
                         const oldView = this.getCurrentSpherical(); // 1. 留底
-                        this.restore(json.params);                  // 2. 应用
+                        this.restore(json.params, json.sceneSettings);           // 2. 应用
 
                         HistoryMgr.add({                            // 3. 存档
                             type: 'change_view',
@@ -5505,20 +5599,42 @@
             reader.readAsText(file);
         },
 
-        restore(savedData) {
-            if (!savedData) return;
-            // 简单兼容旧版
-            if (savedData.radius !== undefined) {
-                this.inputs.radius.value = savedData.radius;
-                this.inputs.theta.value = savedData.theta;
-                this.inputs.phi.value = savedData.phi;
-                this.inputs.targetX.value = savedData.targetX || 0; // 兼容旧档
-                this.inputs.targetY.value = savedData.targetY;
+        restore(viewData, sceneData) {
+            // 1. 恢复视角 (Spherical)
+            if (viewData && viewData.radius !== undefined) {
+                this.inputs.radius.value = viewData.radius;
+                this.inputs.theta.value = viewData.theta;
+                this.inputs.phi.value = viewData.phi;
+                this.inputs.targetX.value = viewData.targetX || 0;
+                this.inputs.targetY.value = viewData.targetY;
                 this.applyFromUIToScene();
+            }
+
+            // 2. 🔥 恢复场景参数 (通过模拟 Input 事件触发所有更新逻辑)
+            if (sceneData) {
+                const updateSlider = (id, val) => {
+                    const el = document.getElementById(id);
+                    if (el && val !== undefined) {
+                        el.value = val;
+                        // 触发 input 事件，这样上面写的监听器就会自动运行：更新 STATE，更新数值文字，重建 3D
+                        el.dispatchEvent(new Event('input'));
+                    }
+                };
+
+                updateSlider('sceneZoom', sceneData.wScale);
+                updateSlider('heightSlider', sceneData.hScale);
+                updateSlider('thicknessSlider', sceneData.thickness);
+                updateSlider('zSpaceSlider', sceneData.zSpace);
             }
         },
 
-        reset() { this.restore(this.defaults); }
+        reset() {
+            // 重置视角
+            this.restore(this.defaults);
+            // 重置滑块到默认值 (你可以在这里硬编码默认值)
+            const defaultScene = { wScale: 20, hScale: 150, thickness: 100, zSpace: 5 };
+            this.restore(this.defaults, defaultScene);
+        }
     };
 
     function refreshAllMidiMeshes() {
@@ -5656,7 +5772,7 @@
 
                             // 支持撤回的加载逻辑
                             const oldView = ViewMgr.getCurrentSpherical();
-                            ViewMgr.restore(params);
+                            ViewMgr.restore(params, json.sceneSettings);
                             HistoryMgr.add({
                                 type: 'change_view',
                                 oldView: oldView,
@@ -6585,7 +6701,7 @@
 
     function updateRealtimeHUD() {
         HUD.frameCounter++;
-        if (HUD.frameCounter % 3 !== 0) return;
+        if (HUD.frameCounter % 30 !== 0) return;
 
         // 直接复用 ViewMgr 的计算逻辑，确保数据 100% 一致
         const s = ViewMgr.getCurrentSpherical();
@@ -6629,6 +6745,10 @@
         if (starMesh){
             starMesh.rotation.y += 0.0002;
             starMesh.rotation.x += 0.000005;
+            if (starMesh.material.uniforms && starMesh.material.uniforms.uCamX) {
+                // 这里传入的是 cameraTargetX (即播放头的理论位置)，比 camera.position.x 更稳定
+                starMesh.material.uniforms.uCamX.value = cameraTargetX;
+            }
         }
 
         if (STATE.isPlaying) {
@@ -6671,22 +6791,9 @@
 
         // --- Shader Uniforms 更新 ---
         const playheadX = STATE.currentTime * STATE.playbackSpeed;
-        STATE.clips.forEach(clip => {
-            // 兼容 InstancedMesh (clip.mesh) 或 Group (clip.mesh.children)
-            const targets = [];
-            if (clip.mesh) {
-                if (clip.mesh.material) targets.push(clip.mesh); // InstancedMesh
-                else if (clip.mesh.children) targets.push(...clip.mesh.children); // Group
-            }
-
-            targets.forEach(meshChild => {
-                if (meshChild.material && meshChild.material.uniforms) {
-                    if (meshChild.material.uniforms.uPlayheadX) {
-                        meshChild.material.uniforms.uPlayheadX.value = playheadX;
-                    }
-                }
-            });
-        });
+        for (let i = 0, l = activeShaderMaterials.length; i < l; i++) {
+            activeShaderMaterials[i].uniforms.uPlayheadX.value = playheadX;
+        }
 
         controls.update();
         updateRealtimeHUD();
