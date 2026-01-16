@@ -1622,20 +1622,15 @@
     let bgTexture = null;
     let bgImageAspect = 1;
     let customGeometry = null;
-
     let sharedAudioCtx = null;
     let starMesh = null; // 全局星星对象
     let activeShaderMaterials = [];
-
     let currentHighlightColor = new THREE.Color(1, 1, 1);
     let currentHighlightWidth = 50.0;
-
-    // 🔥 新增：双通道模糊专用变量
     let blurScene, blurCamera;
     let blurRtX, blurRtY; // 两个渲染目标 (Render Targets): X轴结果, Y轴结果
     let blurMatX, blurMatY; // 两个材质: 横向模糊, 纵向模糊
     let blurMesh; // 用于离屏渲染的板子
-
     let previewScene, previewCamera, previewRenderer, previewControls;
     let previewMeshOriginal = null;  // 左边的原始替身
     let previewMeshStretched = null; // 右边的拉伸替身
@@ -2438,8 +2433,12 @@
                 // 当星星落后相机 range/2 时，自动加 range 瞬移到前方
                 float wrappedDiff = mod(diff + uRange * 0.5, uRange) - uRange * 0.5;
 
+                vec3 localOffset = vec3(wrappedDiff, pos.y, pos.z);
+
+                vec4 rotatedOffset = modelMatrix * vec4(localOffset, 1.0);
+
                 // 3. 计算最终的世界坐标：相机位置 + 循环后的相对偏移
-                vec3 finalPos = vec3(uCamX + wrappedDiff, pos.y, pos.z);
+                vec3 finalPos = rotatedOffset.xyz + vec3(uCamX, 0.0, 0.0);
 
                 vec4 mvPosition = viewMatrix * vec4(finalPos, 1.0);
                 gl_Position = projectionMatrix * mvPosition;
