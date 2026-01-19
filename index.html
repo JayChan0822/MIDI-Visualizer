@@ -12,26 +12,31 @@
 
     <style>
         :root {
-            /* Apple Dark Mode Palette */
-            --bg-color: #0b0c15;
-            --glass-panel: rgba(30, 30, 30, 0.65);
-            --glass-header: rgba(44, 44, 46, 0.75);
-            --glass-border: rgba(255, 255, 255, 0.12);
-            --glass-highlight: rgba(255, 255, 255, 0.1);
-            --text-main: #f5f5f7;
-            --text-muted: #86868b;
+            /* --- 核心色板：Deep Midnight Glass (升级版) --- */
+            --bg-color: #050507; /* 更深邃的午夜黑，比原来的 #0b0c15 更纯净 */
 
-            /* Accents */
-            --accent-blue: #0a84ff;
+            /* 玻璃态系统：更薄、更清透 */
+            --glass-panel: rgba(20, 20, 23, 0.75); /* 面板颜色微调 */
+            --glass-header: rgba(11, 12, 18, 0.7); /* 头部更透 */
+            --glass-border: rgba(255, 255, 255, 0.08); /* 边框变得极细、精致 */
+            --glass-highlight: rgba(255, 255, 255, 0.05); /* 表面反光 */
+
+            /* 文本系统 */
+            --text-main: #ffffff;
+            --text-muted: #98989d; /* 稍微偏冷灰，更现代 */
+
+            /* Accents：霓虹色系，高饱和度 */
+            --accent-blue: #2E9AFF;  /* 更亮的科技蓝 */
             --accent-green: #30d158;
             --accent-red: #ff453a;
             --accent-orange: #ff9f0a;
             --accent-yellow: #ffd60a;
             --accent-pink: #bf5af2;
+            --accent-gradient: linear-gradient(135deg, #2E9AFF 0%, #bf5af2 100%); /* 新增：主品牌渐变 */
 
             --radius-lg: 16px;
             --radius-sm: 8px;
-            --blur-amt: 20px;
+            --blur-amt: 40px; /* 模糊度加倍，磨砂感更高级 */
 
             --timeline-height: 40vh;
         }
@@ -40,19 +45,27 @@
             margin: 0;
             overflow: hidden;
             background-color: var(--bg-color);
+            /* 核心修改：添加顶部环境光效，制造空间纵深感 */
+            background-image: radial-gradient(circle at 50% -20%, #1c2540 0%, #050507 50%);
             color: var(--text-main);
-            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", Roboto, sans-serif; /* 字体微调 */
             display: flex;
             flex-direction: column;
             height: 100vh;
             font-size: 13px;
-            letter-spacing: -0.01em;
+            letter-spacing: -0.015em;
+            -webkit-font-smoothing: antialiased; /* 让字体在深色背景下更清晰 */
         }
 
-        /* --- 通用滚动条美化 --- */
-        ::-webkit-scrollbar { width: 10px; height: 10px; background: transparent; }
-        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 5px; border: 2px solid transparent; background-clip: content-box; }
-        ::-webkit-scrollbar-thumb:hover { background-color: rgba(255,255,255,0.3); }
+        /* --- 通用滚动条美化 (隐形模式) --- */
+        ::-webkit-scrollbar { width: 8px; height: 8px; background: transparent; }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.1);
+            border-radius: 4px;
+            border: 2px solid transparent;
+            background-clip: content-box;
+        }
+        ::-webkit-scrollbar-thumb:hover { background-color: rgba(255,255,255,0.25); }
         ::-webkit-scrollbar-corner { background: transparent; }
 
         /* --- 顶部 DAW 容器 --- */
@@ -60,7 +73,8 @@
             height: var(--timeline-height);
             display: flex;
             flex-direction: column;
-            background: radial-gradient(circle at top left, #1c1c1e 0%, #000 100%);
+            /* 修改：移除死板的径向渐变，使用透明背景让 Body 的环境光透出来 */
+            background: transparent;
             border-bottom: 1px solid var(--glass-border);
             position: relative;
             z-index: 20;
@@ -76,121 +90,148 @@
             backdrop-filter: blur(var(--blur-amt));
             -webkit-backdrop-filter: blur(var(--blur-amt));
             border-bottom: 1px solid var(--glass-border);
+            /* 新增：顶部微弱的高光线，模拟玻璃边缘的反光，增加立体感 */
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
             gap: 12px;
             user-select: none;
         }
 
-        /* --- 按钮样式重构 (Modern Glass) --- */
+        /* --- 按钮样式重构 (Deep Midnight Glass / Bento Style) --- */
         .btn {
-            /* 基础玻璃态：默认是低调的半透明灰 */
-            background: rgba(255, 255, 255, 0.05);
+            /* 基础玻璃态：更深邃、更通透的材质 */
+            background: rgba(255, 255, 255, 0.04);
             border: 1px solid rgba(255, 255, 255, 0.1);
-            color: var(--text-main);
-            padding: 6px 14px;
-            border-radius: 8px; /* 更圆润 */
+            color: var(--text-muted); /* 默认文字灰色，更显高级，Hover时变白 */
+            padding: 0 14px; /* 使用 Flex 垂直居中，padding 改为左右 */
+            border-radius: 8px; /* 保持圆角 */
             cursor: pointer;
             font-size: 12px;
             font-weight: 500;
-            transition: all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+            /* 更加细腻的贝塞尔曲线过渡 */
+            transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
             backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
+
             display: inline-flex;
             align-items: center;
             justify-content: center;
             gap: 6px;
-            height: 32px; /* 统一高度 */
+            height: 32px;
 
-            /* 🔥 新增这两行修复崩坏问题 🔥 */
+            /* 核心质感：顶部微弱的高光内阴影，制造厚度感 */
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+
+            /* 🔥 保持修复逻辑 🔥 */
             white-space: nowrap;
             flex-shrink: 0;
         }
 
-        /* 悬停效果：变亮并轻微上浮 */
+        /* 悬停效果：材质变亮，文字变白 */
         .btn:hover {
-            background: rgba(255, 255, 255, 0.15);
-            border-color: rgba(255, 255, 255, 0.3);
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.25);
+            color: #fff; /* 文字高亮 */
             transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            box-shadow:
+                    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+                    0 4px 12px rgba(0, 0, 0, 0.4); /* 阴影更深，增加悬浮感 */
         }
 
         .btn:active {
             transform: translateY(0);
-            opacity: 0.8;
+            background: rgba(255, 255, 255, 0.08);
+            opacity: 0.9;
+            box-shadow: none;
         }
 
-        /* --- 功能色变体 (通过类名控制，而不是写死 style) --- */
+        /* --- 功能色变体 --- */
 
-        /* 1. 强调操作 (保存/读取/确定) - iOS 蓝 */
+        /* 1. 强调操作 (保存/读取) - 幽灵蓝 (Electric Blue Ghost) */
         .btn-blue {
-            background: rgba(10, 132, 255, 0.15);
-            border-color: rgba(10, 132, 255, 0.3);
-            color: #4facfe;
+            background: rgba(46, 154, 255, 0.1); /* 使用新的亮蓝底色 */
+            border-color: rgba(46, 154, 255, 0.25);
+            color: #5CADFF; /* 亮蓝色文字 */
         }
         .btn-blue:hover {
-            background: rgba(10, 132, 255, 0.8);
+            background: rgba(46, 154, 255, 0.25);
+            border-color: rgba(46, 154, 255, 0.5);
             color: #fff;
-            box-shadow: 0 0 15px rgba(10, 132, 255, 0.4);
+            box-shadow: 0 0 15px rgba(46, 154, 255, 0.3);
         }
 
-        /* 2. 核心高亮 (导出视频) - 霓虹粉紫渐变 */
+        /* 2. 核心高亮 (导出视频) - 品牌渐变 (Brand Gradient) */
         .btn-primary {
-            background: linear-gradient(135deg, #0a84ff 0%, #bf5af2 100%) !important;
+            /* 使用之前定义的蓝紫渐变 */
+            background: linear-gradient(135deg, #2E9AFF 0%, #bf5af2 100%) !important;
             color: #fff !important;
-            border: none !important;
+            border: 1px solid rgba(255,255,255,0.1) !important; /* 增加微弱描边 */
             font-weight: 600;
-            box-shadow: 0 2px 10px rgba(10, 132, 255, 0.3);
+            /* 扩散光影 */
+            box-shadow: 0 4px 15px rgba(46, 154, 255, 0.3);
         }
         .btn-primary:hover {
-            box-shadow: 0 0 20px rgba(191, 90, 242, 0.5);
+            box-shadow: 0 6px 20px rgba(191, 90, 242, 0.5); /* 紫色光晕 */
             transform: scale(1.02) translateY(-1px);
+            filter: brightness(1.1);
         }
 
-        /* 3. 危险/停止操作 (Stop/清除) - 柔和红 */
+        /* 3. 危险操作 (Stop/清除) - 幽灵红 */
         .btn-red {
             background: rgba(255, 69, 58, 0.1);
-            border-color: rgba(255, 69, 58, 0.2);
+            border-color: rgba(255, 69, 58, 0.25);
             color: #ff6b6b;
         }
         .btn-red:hover {
-            background: rgba(255, 69, 58, 0.8);
+            background: rgba(255, 69, 58, 0.8); /* 悬停变为实色 */
             color: white;
-            box-shadow: 0 0 10px rgba(255, 69, 58, 0.4);
+            border-color: transparent;
+            box-shadow: 0 0 15px rgba(255, 69, 58, 0.4);
         }
 
-        /* 4. 创意操作 (贴图/背景) - 活力紫/橙 */
+        /* 4. 创意操作 (贴图) - 幽灵紫 */
         .btn-accent {
             background: rgba(191, 90, 242, 0.1);
-            border-color: rgba(191, 90, 242, 0.3);
+            border-color: rgba(191, 90, 242, 0.25);
             color: #e0aaff;
         }
         .btn-accent:hover {
-            background: rgba(191, 90, 242, 0.7);
+            background: rgba(191, 90, 242, 0.25);
+            border-color: #e0aaff;
             color: white;
             box-shadow: 0 0 15px rgba(191, 90, 242, 0.3);
         }
 
-        /* 分隔线美化 */
+        /* --- 分隔线美化 (Subtle Divider) --- */
         .toolbar-separator {
             width: 1px;
-            height: 24px;
-            background: linear-gradient(to bottom, transparent, rgba(255,255,255,0.2), transparent);
-            margin: 0 8px;
+            height: 20px; /* 稍微缩短，更精致 */
+            /* 使用边框变量，保持统一，改为上下渐隐 */
+            background: linear-gradient(to bottom, transparent, rgba(255, 255, 255, 0.15), transparent);
+            margin: 0 10px;
+            opacity: 0.6;
         }
 
-
-        /* --- 标尺区域 --- */
+        /* --- 标尺区域 (Precision Ruler) --- */
         #ruler-container {
             display: flex;
-            height: 32px; /* 更紧凑 */
-            background: rgba(20, 20, 20, 0.8);
+            height: 32px;
+            /* 背景色调整为深色半透明，透出一点环境光，但保证刻度清晰 */
+            background: rgba(11, 12, 18, 0.6);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+
             border-bottom: 1px solid var(--glass-border);
             flex-shrink: 0;
             z-index: 30;
+
+            /* 底部微弱投影，让标尺看起来压在轨道之上 */
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
         }
 
         #ruler-header-spacer {
             width: 250px;
-            background: transparent;
+            /* 左侧垫片稍微深一点，与下方的轨道头对齐 */
+            background: rgba(0, 0, 0, 0.2);
             border-right: 1px solid var(--glass-border);
             flex-shrink: 0;
         }
@@ -205,177 +246,422 @@
         #bar-ruler, #time-ruler {
             height: 16px;
             position: relative;
-            font-size: 9px;
-            font-family: "SF Mono", "Menlo", monospace;
+            font-size: 10px; /* 字体微调大 1px，更易读 */
+            font-family: "SF Mono", "Menlo", "Consolas", monospace; /* 强调等宽字体 */
             color: var(--text-muted);
             pointer-events: none;
+            letter-spacing: -0.5px;
         }
-        #bar-ruler { border-bottom: 1px solid rgba(255,255,255,0.05); color: #aaa; }
 
+        /* 两个标尺之间的分割线 */
+        #bar-ruler {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+            color: #888;
+        }
+
+        /* --- 刻度线美化 --- */
         .ruler-mark {
             position: absolute; top: 0; bottom: 0;
-            border-left: 1px solid rgba(255,255,255,0.15);
-            padding-left: 4px; line-height: 16px;
+            /* 默认小刻度：极细、低调 */
+            border-left: 1px solid rgba(255, 255, 255, 0.1);
+            padding-left: 4px;
+            line-height: 16px;
+            transition: color 0.2s;
         }
-        .ruler-mark.major { border-left-color: rgba(255,255,255,0.4); font-weight: 600; }
 
-        /* --- 轨道区域 --- */
+        /* 主刻度 (Major)：高亮显示，模拟荧光仪表盘 */
+        .ruler-mark.major {
+            border-left-color: rgba(255, 255, 255, 0.3); /* 线条更亮 */
+            font-weight: 600;
+            color: var(--accent-blue); /* 🔥 数字变成科技蓝，提升可读性 */
+            text-shadow: 0 0 10px rgba(46, 154, 255, 0.3); /* 微弱的文字发光 */
+        }
+
+        /* --- 轨道区域整体容器 --- */
         #tracks-area {
             flex: 1;
             overflow: hidden;
             position: relative;
             display: flex;
-            background: rgba(0,0,0,0.3);
+            /* 微微压暗背景，让轨道内容更突出 */
+            background: rgba(0, 0, 0, 0.2);
+            box-shadow: inset 0 4px 20px rgba(0,0,0,0.5); /* 内部阴影，增加深邃感 */
         }
 
-        /* 左侧轨道头 */
+        /* --- 左侧轨道头 (Track Headers / Rack) --- */
         #track-headers {
             width: 250px;
-            background: var(--glass-panel);
-            backdrop-filter: blur(10px);
+            /* 使用深色玻璃面板，稳重 */
+            background: rgba(11, 12, 18, 0.75);
+            backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
+
             border-right: 1px solid var(--glass-border);
             flex-shrink: 0;
             z-index: 5;
             overflow: hidden;
+
+            /* 增加右侧阴影，让它看起来浮在时间轴上面 */
+            box-shadow: 4px 0 15px rgba(0, 0, 0, 0.3);
         }
 
+        /* --- 左侧轨道头 (Track Headers / Rack) --- */
         .track-header {
             height: 64px;
+            /* 🔥 核心修复：锁定盒模型，确保总高度不随边框增加 */
+            box-sizing: border-box;
+
+            /* 每一个轨道头都有独立的顶部微光 */
             border-bottom: 1px solid var(--glass-border);
+            border-top: 1px solid rgba(255, 255, 255, 0.02);
+
             padding: 0 16px;
             display: flex;
             flex-direction: column;
             justify-content: center;
             background: transparent;
-            transition: background 0.2s;
+            transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            position: relative;
         }
+
+        /* 鼠标悬停时的微交互 */
+        .track-header:hover {
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        /* --- 选中状态：赛博朋克风格高亮 --- */
         .track-header.selected {
-            background: rgba(255, 255, 255, 0.08) !important;
-            border-left: 2px solid var(--accent-blue);
+            /* 背景带有微弱的蓝色调 */
+            background: rgba(46, 154, 255, 0.08) !important;
+            border-bottom-color: rgba(46, 154, 255, 0.1);
+            /* 移除旧的边框，改用更高级的伪元素 */
+            border-left: none;
+        }
+
+        /* 选中时的左侧发光条 */
+        .track-header.selected::before {
+            content: '';
+            position: absolute; left: 0; top: 0; bottom: 0;
+            width: 3px;
+            background: var(--accent-blue);
+            /* 蓝色霓虹光晕 */
+            box-shadow: 2px 0 12px rgba(46, 154, 255, 0.6);
+            z-index: 2;
         }
 
         .track-name {
-            font-size: 13px; font-weight: 600; color: var(--text-main);
-            margin-bottom: 6px; letter-spacing: 0.02em;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-main);
+            margin-bottom: 6px;
+            letter-spacing: 0.02em;
+            /* 文字阴影，增加立体感 */
+            text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+
+            /* 选中时文字略微变亮 */
+            transition: color 0.2s;
+        }
+        .track-header.selected .track-name {
+            color: #fff;
+            text-shadow: 0 0 10px rgba(46, 154, 255, 0.3);
         }
 
-        .track-controls { display: flex; align-items: center; gap: 6px; }
+        .track-controls {
+            display: flex;
+            align-items: center;
+            gap: 8px; /* 稍微增加间距 */
+            opacity: 0.8; /* 默认稍微暗一点，减少视觉干扰 */
+            transition: opacity 0.2s;
+        }
+        .track-header:hover .track-controls {
+            opacity: 1; /* 悬停时完全显示 */
+        }
 
-        /* 轨道小按钮 (M/S) */
+        /* --- 轨道小按钮 (Console Buttons) --- */
         .btn-sm {
             width: 22px; height: 22px;
-            border-radius: 4px;
-            border: 1px solid rgba(255,255,255,0.1);
-            background: rgba(0,0,0,0.3);
-            color: #888;
-            font-size: 9px; font-weight: bold;
+            border-radius: 6px; /* 稍微更圆润一点 */
+            /* 玻璃基底 */
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.05);
+            color: #6e6e73; /* 默认更暗，不抢视觉 */
+
+            font-size: 9px; font-weight: 700;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+
+            /* 顶部微弱高光，制造厚度感 */
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
         }
-        .btn-sm:hover { border-color: rgba(255,255,255,0.3); color: #fff; }
 
-        .mute-btn.active-mute { background: var(--accent-red); color: white; border-color: transparent; box-shadow: 0 0 8px rgba(255, 69, 58, 0.4); }
-        .solo-btn.active-solo { background: var(--accent-yellow); color: black; border-color: transparent; box-shadow: 0 0 8px rgba(255, 214, 10, 0.4); }
+        .btn-sm:hover {
+            border-color: rgba(255, 255, 255, 0.3);
+            color: #fff;
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateY(-1px);
+        }
 
-        /* 颜色选择器美化 */
+        /* 激活状态：霓虹灯效 */
+        .mute-btn.active-mute {
+            background: rgba(255, 69, 58, 0.9); /* 红色半透 */
+            color: white;
+            border-color: transparent;
+            /* 强烈的红色光晕 */
+            box-shadow: 0 0 12px rgba(255, 69, 58, 0.6), inset 0 1px 0 rgba(255,255,255,0.2);
+        }
+
+        .solo-btn.active-solo {
+            background: var(--accent-yellow); /* 黄色实色 */
+            color: black; /* 黑色文字对比度最高 */
+            border-color: transparent;
+            /* 黄色光晕 */
+            box-shadow: 0 0 12px rgba(255, 214, 10, 0.6), inset 0 1px 0 rgba(255,255,255,0.4);
+        }
+
+        /* --- 颜色选择器美化 (Jewel Style) --- */
         input[type="color"] {
             -webkit-appearance: none; border: none;
             width: 18px; height: 18px; padding: 0;
-            background: none; cursor: pointer; border-radius: 50%; overflow: hidden;
+            background: none; cursor: pointer;
+            border-radius: 50%; overflow: visible; /* 允许阴影溢出 */
+            transition: transform 0.2s;
         }
-        input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
-        input[type="color"]::-webkit-color-swatch { border: 1px solid rgba(255,255,255,0.3); border-radius: 50%; }
+        input[type="color"]:hover {
+            transform: scale(1.1); /* 悬停微放大 */
+        }
 
-        /* --- 编组指示条 --- */
+        input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+        input[type="color"]::-webkit-color-swatch {
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            /* 给色块增加微弱的内部光泽 */
+            box-shadow: inset 0 2px 4px rgba(255,255,255,0.3);
+        }
+
+        /* --- 编组指示条 (LED Strip) --- */
         .group-indicator {
             position: absolute; left: 0; top: 0; bottom: 0; width: 4px;
+            /* 增加光晕，使其看起来像 LED 灯条 */
+            box-shadow: 2px 0 8px rgba(0,0,0,0.3);
         }
 
-        /* --- 右侧时间轴 --- */
+        /* --- 右侧时间轴 (Deep Space Grid) --- */
         #timeline-lanes {
             flex: 1;
             position: relative;
             overflow: scroll;
-            background: #111; /* 深色背景减少视觉疲劳 */
-            background-image: radial-gradient(#222 1px, transparent 1px);
-            background-size: 20px 20px;
+
+            /* 背景色改为极深的午夜蓝，与 Body 融合 */
+            background-color: #08090e;
+
+            /* 网格优化：使用极低透明度的白色圆点，比灰色圆点更通透 */
+            background-image:
+                    radial-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+
+            /*稍微拉大一点间距，显得视野更开阔 */
+            background-size: 24px 24px;
+
+            /* 顶部内阴影，增加纵深感，让标尺看起来是悬浮的 */
+            box-shadow: inset 0 10px 20px -10px rgba(0,0,0,0.5);
         }
 
+        /* --- 轨道行 (Ambient Lane) --- */
         .track-lane {
             height: 64px;
-            border-bottom: 1px solid rgba(255,255,255,0.05);
+            /* 1. 锁定盒模型 */
+            box-sizing: border-box;
+
+            /* 2. 底部边框 */
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+
+            /* 3. 🔥 核心修复：顶部边框改为显色，与左侧 Header 保持视觉一致 */
+            border-top: 1px solid rgba(255, 255, 255, 0.02);
+
             position: relative;
-            /* 斑马纹背景 */
-            background-image: linear-gradient(to bottom, rgba(255,255,255,0.01), transparent);
-        }
 
-        .grid-lines {
-            position: absolute; inset: 0; pointer-events: none;
-            background-image: linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px);
+            /* 4. 显式声明层级，防止遮挡网格 */
             z-index: 0;
-        }
 
-        /* --- Clip (音符块) --- */
-        .clip {
-            position: absolute; top: 6px; height: 52px;
-            background: rgba(10, 132, 255, 0.25);
-            border: 1px solid rgba(10, 132, 255, 0.6);
-            border-radius: 6px; /* 圆角矩形 */
-            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-            cursor: grab; overflow: hidden;
-            backdrop-filter: blur(4px);
-        }
-        .clip:active { cursor: grabbing; border-color: #fff; }
-        .clip-name {
-            padding: 4px 6px; font-size: 10px; font-weight: 600;
-            text-shadow: 0 1px 2px rgba(0,0,0,0.8); pointer-events: none; z-index: 2;
-        }
-
-        /* 播放指针 */
-        #ruler-playhead, #ui-playhead {
-            position: absolute; top: 0; bottom: 0; width: 1px;
-            background: var(--accent-red);
-            z-index: 100; pointer-events: none;
-            box-shadow: 0 0 4px rgba(255, 69, 58, 0.8);
-        }
-        #ruler-playhead::after {
-            content: ''; position: absolute; top: 0; left: -5px;
-            border-left: 5px solid transparent; border-right: 5px solid transparent;
-            border-top: 8px solid var(--accent-red);
-        }
-
-        /* --- 调整把手 (Resize Handle) --- */
-        #resize-handle {
-            height: 14px; /*把手区域高度*/
-            background: #000; /* 分割线颜色 */
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-            cursor: row-resize; /* 鼠标样式变成上下箭头 */
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            flex-shrink: 0; /* 防止被挤压 */
-            z-index: 60; /* 确保在最上层 */
+            background: linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 0%, transparent 40%);
             transition: background 0.2s;
         }
 
+        /* 悬停轨道行时，稍微加亮 */
+        .track-lane:hover {
+            background: linear-gradient(to bottom, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.01) 100%);
+        }
+
+        #lanes-container {
+            position: relative; /* 让内部的播放线和网格线相对于"整个内容"定位，而不是"窗口" */
+            min-height: 100%;   /* 确保高度至少填满一屏 */
+            display: flex;
+            flex-direction: column;
+            z-index: 0;
+        }
+
+        /* --- 修复层级：防止网格线被背景遮挡 --- */
+        .grid-lines {
+            /* 提高层级，使其浮在轨道背景之上 */
+            z-index: 1;
+            pointer-events: none; /* 让鼠标穿透，不影响点击 */
+        }
+
+        /* --- 修复播放线层级 --- */
+        #ui-playhead {
+            z-index: 200; /* 确保播放线在最上层 */
+        }
+
+        /* --- Clip (音符块) - 核心组件：水晶玻璃态 --- */
+        .clip {
+            position: absolute; top: 6px; height: 52px;
+
+            /* 材质升级：垂直渐变，模拟光照 */
+            background: linear-gradient(180deg, rgba(46, 154, 255, 0.15) 0%, rgba(46, 154, 255, 0.05) 100%);
+
+            /* 边框：使用半透明的 Accent Color */
+            border: 1px solid rgba(46, 154, 255, 0.3);
+            border-radius: 6px;
+
+            /* 核心立体感：
+               1. inset shadow (白) -> 顶部高光倒角
+               2. drop shadow (黑) -> 悬浮阴影
+               3. inset shadow (深) -> 底部厚度
+            */
+            box-shadow:
+                    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+                    inset 0 -1px 0 rgba(0, 0, 0, 0.1),
+                    0 4px 10px rgba(0, 0, 0, 0.3);
+
+            cursor: grab; overflow: hidden;
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+
+            transition: transform 0.1s, box-shadow 0.1s, border-color 0.1s;
+        }
+
+        /* 拖拽/激活状态：变得更亮、更实 */
+        .clip:active {
+            cursor: grabbing;
+            border-color: rgba(255, 255, 255, 0.8);
+            background: rgba(46, 154, 255, 0.25);
+            transform: scale(1.02); /* 微微放大，反馈手感 */
+            box-shadow:
+                    0 8px 20px rgba(0, 0, 0, 0.5),
+                    inset 0 0 0 1px rgba(255,255,255,0.2);
+            z-index: 100;
+        }
+
+        /* Clip 内部的波形/音符名称 */
+        .clip-name {
+            padding: 6px 8px;
+            font-size: 11px;
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.9);
+            letter-spacing: 0.5px;
+
+            /* 确保文字清晰可读 */
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+            pointer-events: none;
+            z-index: 2;
+
+            /* 防止文字过长溢出 */
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* 可选：给 Clip 增加一个左侧装饰条，增强专业感 */
+        .clip::before {
+            content: '';
+            position: absolute; left: 0; top: 0; bottom: 0; width: 4px;
+            background: rgba(46, 154, 255, 0.5);
+            opacity: 0.8;
+        }
+
+        /* --- 播放指针 (Laser Beam) --- */
+        #ruler-playhead, #ui-playhead {
+            position: absolute; top: 0; bottom: 0;
+            width: 1px; /* 极细的核心 */
+
+            /* 核心颜色 */
+            background: var(--accent-red);
+            z-index: 100;
+            pointer-events: none;
+
+            /* 激光光晕：双层投影模拟高亮 */
+            box-shadow:
+                    0 0 4px var(--accent-red),           /* 内层高亮 */
+                    0 0 15px rgba(255, 69, 58, 0.4);     /* 外层漫射光 */
+        }
+
+        /* 指针头部 (Emitter) */
+        #ruler-playhead::after {
+            content: '';
+            position: absolute; top: 0; left: -5px;
+
+            /* 形状：倒三角 */
+            border-left: 5px solid transparent;
+            border-right: 5px solid transparent;
+            border-top: 8px solid var(--accent-red);
+
+            /* 头部也发光 */
+            filter: drop-shadow(0 0 5px rgba(255, 69, 58, 0.8));
+        }
+
+        /* --- 调整把手 (Structural Split) --- */
+        #resize-handle {
+            height: 14px;
+
+            /* 背景：极深的黑色，模拟两个面板之间的缝隙 */
+            background: #020202;
+
+            /* 边框：顶部亮线，底部暗影，制造凹槽感 */
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.8);
+
+            /* 向上投射阴影，增加 DAW 区域的悬浮感 */
+            box-shadow: 0 -5px 15px rgba(0, 0, 0, 0.5);
+
+            cursor: row-resize;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-shrink: 0;
+            z-index: 60;
+            transition: background 0.3s, border-color 0.3s;
+        }
+
         #resize-handle:hover {
-            background: #111; /* 悬停稍微变亮 */
+            background: #08090e; /* 悬停时微微变亮 */
+            border-top-color: rgba(255, 255, 255, 0.15);
         }
 
-        /* 模仿 iPhone 小白条 */
+        /* 模仿 iPhone 小白条 (Interactive Capsule) */
         .handle-bar {
-            width: 180px;
+            width: 100px; /* 默认稍微短一点，显得精致 */
             height: 4px;
-            background: rgba(255, 255, 255, 0.3);
+
+            /* 材质：半透明金属质感 */
+            background: rgba(255, 255, 255, 0.15);
             border-radius: 2px;
-            transition: all 0.2s;
+
+            /* 微弱的光泽 */
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+
+            /* 极致顺滑的过渡 */
+            transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
         }
 
+        /* 悬停交互：变长、变亮、变厚 */
         #resize-handle:hover .handle-bar {
-            background: rgba(255, 255, 255, 0.6); /* 悬停高亮 */
-            width: 220px; /* 悬停变长一点点，增加交互感 */
-            height: 5px;
+            background: var(--accent-blue); /* 激活变为科技蓝 */
+            width: 220px;
+            height: 4px; /* 保持高度，或者微调 */
+            box-shadow: 0 0 10px rgba(46, 154, 255, 0.6); /* 蓝色辉光 */
         }
 
         /* 拖拽时禁止页面选中文字 */
@@ -384,190 +670,346 @@
             cursor: row-resize;
         }
 
-        /* --- 下半部分可视化区域 --- */
+        /* --- 下半部分可视化区域 (Cinematic Stage) --- */
         #visualizer-section {
             flex: 1;
-            background: radial-gradient(circle at center, #1b2735 0%, #000000 100%);
+            /* 核心背景：深邃的黑洞渐变，中心微亮，四周纯黑 */
+            background: radial-gradient(circle at center, #151922 0%, #000000 90%);
             display: flex;
             justify-content: center;
             align-items: center;
             position: relative;
             overflow: hidden;
-            box-shadow: inset 0 20px 40px -20px rgba(0,0,0,1); /* 顶部内阴影衔接 */
+
+            /* 顶部内阴影衔接，制造“沉入”感 */
+            box-shadow: inset 0 20px 50px -10px rgba(0,0,0,0.9);
+
+            /* 增加微弱的顶部反光边框 */
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
         }
 
+        /* 浮动信息层 (Tech HUD) */
         #viz-overlay {
-            position: absolute; top: 16px; right: 20px;
-            color: rgba(255,255,255,0.3); font-size: 11px;
-            background: rgba(0,0,0,0.4); padding: 8px 12px; border-radius: 20px;
-            backdrop-filter: blur(10px); pointer-events: none;
+            position: absolute; top: 20px; right: 24px;
+            color: rgba(255, 255, 255, 0.6);
+            /* 科技感字体 */
+            font-family: "SF Mono", "Menlo", monospace;
+            font-size: 10px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+
+            /* 深色磨砂胶囊 */
+            background: rgba(0, 0, 0, 0.6);
+            padding: 8px 14px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+
+            backdrop-filter: blur(20px);
+            pointer-events: none;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
         }
 
-        /* --- 底部控制栏 (Glass Bar) --- */
+        /* --- 底部控制栏 (Command Deck) --- */
         #bottom-controls {
-            height: 64px;
-            background: rgba(28, 28, 30, 0.85); /* 深色半透明 */
-            backdrop-filter: blur(25px);
-            -webkit-backdrop-filter: blur(25px);
-            border-top: 1px solid var(--glass-border);
+            height: 72px; /* 稍微增高，更显大气 */
+
+            /* 材质：厚重的深色玻璃 */
+            background: rgba(11, 12, 18, 0.85);
+            backdrop-filter: blur(40px); /* 强力模糊，过滤掉下方杂质 */
+            -webkit-backdrop-filter: blur(40px);
+
+            /* 顶部高光边框 */
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 32px;
-            padding: 0 20px;
+            gap: 40px; /* 拉大间距 */
+            padding: 0 32px;
             flex-shrink: 0;
             z-index: 50;
+
+            /* 底部托底阴影 */
+            box-shadow: 0 -10px 30px rgba(0,0,0,0.3);
         }
 
         .slider-group {
-            display: flex; align-items: center; gap: 10px;
-            font-size: 11px; font-weight: 500; color: var(--text-muted);
+            display: flex; align-items: center; gap: 12px;
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
         .slider-group > span {
             min-width: 60px;
             text-align: right;
+            opacity: 0.8;
         }
 
-        /* --- 重写 Range Slider (macOS 风格) --- */
+        /* --- 重写 Range Slider (High-End Audio Gear) --- */
         input[type=range] {
             -webkit-appearance: none;
-            width: 120px;
+            width: 140px; /* 加宽一点 */
             background: transparent;
+            height: 24px; /* 增加点击区域 */
+            cursor: pointer;
         }
 
-        /* 轨道 (Track) */
+        /* 轨道 (Groove Track) */
         input[type=range]::-webkit-slider-runnable-track {
-            width: 100%; height: 4px;
+            width: 100%;
+            height: 6px; /* 稍厚 */
             cursor: pointer;
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 2px;
+
+            /* 深凹槽设计 */
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 3px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.8); /* 内部阴影 */
         }
 
-        /* 滑块 (Thumb) */
+        /* 滑块 (Metallic Thumb) */
         input[type=range]::-webkit-slider-thumb {
-            height: 16px; width: 16px;
-            border-radius: 50%;
-            background: #fff;
-            cursor: pointer;
             -webkit-appearance: none;
-            margin-top: -6px; /* 垂直居中 */
-            box-shadow: 0 2px 5px rgba(0,0,0,0.4);
-            transition: transform 0.1s;
-        }
-        input[type=range]:focus::-webkit-slider-thumb {
-            transform: scale(1.1);
-            box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.1);
+            height: 18px; width: 18px;
+            margin-top: -7px; /* 垂直居中修正 */
+            border-radius: 50%;
+
+            /* 金属质感：银白渐变 */
+            background: linear-gradient(145deg, #ffffff, #d1d1d6);
+            border: 1px solid rgba(255,255,255,0.5);
+
+            /* 投影：让滑块浮起来 */
+            box-shadow: 0 2px 6px rgba(0,0,0,0.6);
+            transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
         }
 
-        /* 底部 Select 下拉框 */
+        /* 悬停/拖拽交互：光晕爆发 */
+        input[type=range]:hover::-webkit-slider-thumb {
+            transform: scale(1.1);
+            box-shadow: 0 0 0 2px rgba(255,255,255,0.1), 0 4px 10px rgba(0,0,0,0.5);
+        }
+
+        input[type=range]:active::-webkit-slider-thumb {
+            background: #fff;
+            transform: scale(1.2);
+            /* 激活时变为科技蓝光晕 */
+            box-shadow: 0 0 0 4px rgba(46, 154, 255, 0.3), 0 0 15px rgba(46, 154, 255, 0.5);
+            border-color: var(--accent-blue);
+        }
+
+        /* --- 底部 Select 下拉框 (Glass Capsule) --- */
         #bottom-controls select {
-            background-color: rgba(255,255,255,0.1);
-            color: white;
-            border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 6px;
-            padding: 4px 8px;
+            background-color: rgba(255, 255, 255, 0.05);
+            color: #fff;
+
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 6px 12px;
+
             font-size: 11px;
+            font-weight: 500;
             outline: none;
             cursor: pointer;
-        }
-        #bottom-controls select:hover { background-color: rgba(255,255,255,0.15); }
 
-        /* --- 新增：高级参数输入框样式 --- */
-        .param-box {
-            background: rgba(0, 0, 0, 0.3);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 6px;
-            padding: 6px 10px;
-            margin-bottom: 8px;
+            /* 增加微弱光泽 */
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
             transition: all 0.2s;
+        }
+
+        #bottom-controls select:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.25);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+
+        #bottom-controls select:focus {
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 0 3px rgba(46, 154, 255, 0.15);
+        }
+
+        /* --- 新增：高级参数输入框 (Embedded Data Modules) --- */
+        .param-box {
+            /* 材质：深色嵌入式玻璃 */
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 8px; /* 稍微更圆润，与按钮统一 */
+            padding: 8px 12px; /* 增加一点内边距，呼吸感更强 */
+            margin-bottom: 8px;
+
+            transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
             display: flex;
             flex-direction: column;
+
+            /* 核心立体感：顶部微弱内发光，底部微弱投影 -> 制造嵌入感 */
+            box-shadow:
+                    inset 0 1px 0 rgba(255, 255, 255, 0.03),
+                    0 2px 4px rgba(0, 0, 0, 0.2);
+
+            position: relative;
+            overflow: hidden;
         }
 
-        /* --- 覆盖：移除所有彩色线条，回归极简 --- */
+        /* --- 覆盖：移除所有彩色线条，回归极简 (Stealth Mode) --- */
         .param-box[class*="theme-"] {
-            border-left-width: 0 !important;   /* 去掉左侧线条宽度 */
-            border-left-style: none !important; /* 去掉线条样式 */
-            box-shadow: none !important;        /* 去掉任何阴影 */
-            background: rgba(0, 0, 0, 0.3);     /* 保持和其他盒子一样的深色背景 */
-            padding-left: 10px !important;      /* 恢复默认内边距 */
+            border-left-width: 0 !important;
+            border-left-style: none !important;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03), 0 2px 4px rgba(0, 0, 0, 0.2) !important; /* 保持通用阴影 */
+            background: rgba(0, 0, 0, 0.4);
+            padding-left: 12px !important; /* 保持对齐 */
         }
 
         /* 鼠标悬停时的通用微交互 */
         .param-box:hover {
-            background: rgba(255, 255, 255, 0.08);
-            border-color: rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.06);
+            border-color: rgba(255, 255, 255, 0.15);
+            transform: translateY(-1px); /* 微微浮起 */
         }
 
-        /* 选中时高亮边框 */
+        /* 选中时高亮：通电激活效果 */
         .param-box:focus-within {
             border-color: var(--accent-blue);
-            background: rgba(0, 0, 0, 0.5);
-            box-shadow: 0 0 10px rgba(10, 132, 255, 0.1);
+            /* 背景变亮，仿佛屏幕背光亮起 */
+            background: rgba(10, 132, 255, 0.1);
+            /* 蓝色光晕扩散 */
+            box-shadow:
+                    0 0 0 1px var(--accent-blue),
+                    0 4px 15px rgba(10, 132, 255, 0.2);
         }
 
+        /* 参数标签 (Technical Label) */
         .param-label {
-            font-size: 10px;
-            color: #888;
-            margin-bottom: 2px;
-            font-weight: 500;
+            font-size: 9px; /* 微型字体 */
+            color: var(--text-muted); /* 使用全局副色 */
+            margin-bottom: 4px;
+            font-weight: 700;
+
+            /* 增加字间距，提升科技感 */
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            opacity: 0.8;
         }
 
+        /* 选中时标签也变蓝，提示性更强 */
+        .param-box:focus-within .param-label {
+            color: var(--accent-blue);
+            opacity: 1;
+        }
+
+        /* 参数数值 (Digital Readout) */
         .param-input {
             background: transparent;
             border: none;
-            color: #fff; /* 文字白色 */
-            font-family: "SF Mono", "Menlo", monospace; /* 等宽字体，数字更好看 */
+            color: #fff;
+
+            font-family: "SF Mono", "Menlo", "Consolas", monospace; /* 强制等宽 */
             font-size: 14px;
             font-weight: 600;
             width: 100%;
             outline: none;
             padding: 0;
+
+            /* 数字光晕：模拟 OLED 屏幕显示 */
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+            transition: text-shadow 0.2s;
         }
 
-        /* 针对 input type=number 隐藏默认的上下箭头，保持美观 */
+        /* 选中时数字更亮 */
+        .param-box:focus-within .param-input {
+            text-shadow: 0 0 8px rgba(255, 255, 255, 0.6);
+        }
+
+        /* 针对 input type=number 隐藏默认的上下箭头 */
         .param-input::-webkit-inner-spin-button,
         .param-input::-webkit-outer-spin-button {
             -webkit-appearance: none;
             margin: 0;
         }
 
-        /* --- Modals (iOS 弹窗风格) --- */
+        /* --- Modals (Hyper-Glass / Deep Depth) --- */
         .modal-content {
-            background: rgba(30, 30, 30, 0.85) !important;
-            backdrop-filter: blur(30px);
-            -webkit-backdrop-filter: blur(30px);
-            border-radius: 16px !important;
-            border: 1px solid rgba(255,255,255,0.1) !important;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.6) !important;
+            /* 核心材质：极深、极透的午夜玻璃 */
+            background: rgba(18, 18, 24, 0.85) !important;
+            backdrop-filter: blur(50px);
+            -webkit-backdrop-filter: blur(50px);
+
+            /* 边框：双层边框逻辑，内亮外暗，模拟玻璃边缘反光 */
+            border: 1px solid rgba(255, 255, 255, 0.08) !important;
+
+            /* 阴影：超大扩散阴影托起弹窗 + 内部微弱高光描边 */
+            box-shadow:
+                    0 40px 100px rgba(0, 0, 0, 0.8),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+
+            border-radius: 20px !important; /* 更大的圆角，更现代 */
             color: var(--text-main);
-            width: 340px !important;
-            padding: 24px !important;
+            width: 360px !important; /* 稍微加宽，布局更舒展 */
+            padding: 32px !important; /* 增加内边距，减少拥挤感 */
         }
 
         .modal-content h3 {
-            font-weight: 600; font-size: 18px; margin-bottom: 20px;
-            text-align: center; color: #fff;
+            font-weight: 700;
+            font-size: 20px;
+            margin-bottom: 24px;
+            text-align: center;
+            color: #fff;
+            /* 标题增加微弱的光晕，提升层级 */
+            text-shadow: 0 0 20px rgba(255, 255, 255, 0.2);
+            letter-spacing: 0.5px;
         }
 
-        .form-group label { color: var(--text-muted); font-size: 11px; margin-bottom: 6px; display: block; }
+        .form-group label {
+            color: var(--text-muted);
+            font-size: 11px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            display: block;
+            /* 增加字间距和全大写，增加科技感（可选） */
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+
+        /* 输入框与下拉框：深坑设计 (Deep Recess) */
         .form-group select, .form-group input[type="text"] {
             width: 100%;
-            background: rgba(0,0,0,0.3) !important;
-            border: 1px solid rgba(255,255,255,0.1) !important;
-            border-radius: 8px !important;
-            padding: 10px !important;
+            /* 背景极深，形成凹槽感 */
+            background: rgba(0, 0, 0, 0.4) !important;
+            border: 1px solid rgba(255, 255, 255, 0.08) !important;
+            border-radius: 10px !important;
+            padding: 12px !important; /* 更舒适的点击区域 */
             color: #fff !important;
             font-size: 13px;
             outline: none;
-        }
-        .form-group select:focus, .form-group input:focus {
-            border-color: var(--accent-blue) !important;
-            background: rgba(0,0,0,0.5) !important;
+            transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+
+            /* 内部微阴影，强化凹陷感 */
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3) !important;
         }
 
-        .modal-buttons { gap: 12px !important; margin-top: 24px !important; }
-        .modal-buttons .btn { flex: 1; padding: 10px; border-radius: 8px; font-size: 13px; }
+        /* 焦点状态：能量激活 */
+        .form-group select:focus, .form-group input:focus {
+            border-color: var(--accent-blue) !important;
+            /* 聚焦时背景稍微提亮 */
+            background: rgba(0, 0, 0, 0.6) !important;
+            /* 蓝色光晕扩散 */
+            box-shadow:
+                    0 0 0 3px rgba(46, 154, 255, 0.15),
+                    inset 0 1px 2px rgba(0, 0, 0, 0.5) !important;
+        }
+
+        .modal-buttons {
+            gap: 16px !important; /* 拉大按钮间距 */
+            margin-top: 32px !important;
+        }
+
+        .modal-buttons .btn {
+            flex: 1;
+            padding: 12px; /* 增加高度 */
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 600;
+        }
 
         #context-menu {
             position: fixed; /* 🔥 关键修复：必须是固定定位，top/left 才会生效 */
@@ -586,95 +1028,162 @@
         }
         .menu-item:hover { background: var(--accent-blue); color: #fff; }
 
-        /* --- Logo 样式 (上下两行版) --- */
+        /* --- 右键菜单 (Floating OS Menu) --- */
+        #context-menu {
+            position: fixed; /* 🔥 保持关键修复 */
+            display: none;
+            z-index: 10000;
+
+            /* 材质升级：磨砂感更强，背景更深，接近 macOS 风格 */
+            background: rgba(20, 20, 25, 0.85);
+            backdrop-filter: blur(40px);
+            -webkit-backdrop-filter: blur(40px);
+
+            /* 边框：极细微的亮边 */
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px; /* 更圆润 */
+            padding: 6px;
+
+            /* 阴影：锐利的悬浮阴影，增加层次感 */
+            box-shadow:
+                    0 10px 40px rgba(0, 0, 0, 0.6),
+                    0 0 0 1px rgba(255, 255, 255, 0.05); /* 双重边框强化细节 */
+
+            min-width: 160px; /* 保证最小宽度 */
+
+            /* 增加一个微弱的进场动画 */
+            animation: menuFade 0.1s ease-out;
+            transform-origin: top left;
+        }
+
+        @keyframes menuFade {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        .menu-item {
+            border-radius: 6px;
+            padding: 8px 12px; /* 稍微增加点击区域 */
+            font-size: 12px;
+            color: var(--text-main);
+            cursor: pointer;
+            transition: all 0.1s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .menu-item:hover {
+            background: var(--accent-blue);
+            color: #fff;
+            /* 蓝色光晕，增加选中质感 */
+            box-shadow: 0 4px 12px rgba(46, 154, 255, 0.3);
+        }
+
+        /* --- Logo 样式 (Premium Brand) --- */
         #app-logo {
             display: flex;
-            align-items: center; /* 垂直居中整个 Logo 块 */
-            gap: 8px;            /* Logo 和版本号之间的间距 */
+            align-items: center;
+            gap: 10px;            /* 拉开一点间距 */
             cursor: pointer;
             padding: 4px 8px;
-            border-radius: 6px;
-            transition: opacity 0.2s;
+            border-radius: 8px;
+            transition: all 0.2s;
             user-select: none;
             text-decoration: none;
-            height: 100%;        /* 占满工具栏高度 */
+            height: 100%;
         }
 
+        /* 优化悬停：不再是变透明，而是背景微亮，更显高级 */
         #app-logo:hover {
-            opacity: 0.8;
+            opacity: 1;
+            background: rgba(255, 255, 255, 0.05);
+            box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.05);
         }
 
-        /* 新增：文字容器，负责垂直排列和居中 */
+        /* --- 补充 Logo 内部文字样式 (Pro Max 必需) --- */
         .logo-wrapper {
             display: flex;
-            flex-direction: column; /* 垂直堆叠 */
-            align-items: center;    /* 水平居中 */
+            flex-direction: column;
+            align-items: flex-start; /* 左对齐 */
             justify-content: center;
-            line-height: 1.0;       /* 紧凑行高 */
+            line-height: 1.0;
         }
 
         .logo-text {
             font-family: 'Chango', sans-serif;
             font-weight: 400;
 
-            /* 渐变文字效果 */
-            background: linear-gradient(to bottom, #ffffff 30%, #9ca3af 100%);
+            /* 升级：银色到白色的高级金属渐变 */
+            background: linear-gradient(180deg, #ffffff 20%, #a1a1aa 100%);
             -webkit-background-clip: text;
             background-clip: text;
             color: transparent;
+
+            /* 文字投影 */
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
         }
 
-        /* 上面的大字 MIDI */
         .title-main {
             font-size: 18px;
-            letter-spacing: 0.1em;
+            letter-spacing: 0.05em;
         }
 
-        /* 下面的小字 Visualizer */
         .title-sub {
-            font-size: 10px;
-            letter-spacing: 0.15em; /* 字间距稍微拉宽，与上面对齐 */
-            opacity: 0.9;
-        }
-
-        .version-tag {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             font-size: 9px;
-            background: var(--accent-blue);
-            color: white;
-            padding: 1px 4px;
-            border-radius: 4px;
-            font-weight: 600;
-            align-self: center; /* 让版本号稍微靠上一点，或者 center 居中 */
-            margin-top: 4px;        /* 微调位置 */
+            letter-spacing: 0.2em;
+            opacity: 0.8;
+            color: #fff;
+            margin-top: 2px;
         }
 
+        /* 版本号标签 */
         .version-tag {
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
             font-size: 9px;
-            background: var(--accent-blue);
+            background: var(--accent-blue); /* 如果有 defined gradient 更好 */
             color: white;
-            padding: 1px 4px;
+            padding: 2px 6px;
             border-radius: 4px;
-            font-weight: 600;
+            font-weight: 700;
+            align-self: center;
+            margin-top: 2px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
         }
 
-        /* Loading 遮罩 */
+        /* --- Loading 遮罩 (Seamless Launch) --- */
         #loading {
-            background: rgba(0,0,0,0.4);
-            backdrop-filter: blur(10px);
-            font-size: 16px; font-weight: 500; letter-spacing: 1px;
+            /* 核心优化：使用与 Body 一致的深色背景，消除加载时的割裂感 */
+            background: var(--bg-color) !important;
+            background-image: radial-gradient(circle at 50% -20%, #1c2540 0%, #050507 50%) !important;
+
+            backdrop-filter: blur(20px);
+            font-size: 14px;
+            font-weight: 600;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--text-muted);
+
+            /* 增加淡入淡出过渡 */
+            transition: opacity 0.5s ease;
         }
 
+        /* --- 全局拖拽覆盖 (Import Zone) --- */
         body.global-drag-over::after {
             content: '📂 释放以导入文件 (MIDI / Audio / Image / Video / JSON)';
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.6);
-            border: 4px dashed var(--accent-blue);
-            backdrop-filter: blur(5px);
+            /* 稍微留出边距，设计感更强 */
+            top: 12px; left: 12px; right: 12px; bottom: 12px;
+            width: auto; height: auto;
+
+            /* 材质：深色磨砂玻璃 */
+            background: rgba(11, 12, 18, 0.85);
+
+            /* 边框：品牌蓝虚线 */
+            border: 2px dashed var(--accent-blue);
+            border-radius: 16px;
+
+            backdrop-filter: blur(15px);
             z-index: 99999;
             pointer-events: none; /* 让鼠标事件穿透，防止闪烁 */
 
@@ -682,87 +1191,99 @@
             justify-content: center;
             align-items: center;
             color: #fff;
-            font-size: 24px;
+            font-size: 20px; /* 字体微调 */
             font-weight: 600;
             box-sizing: border-box;
+
+            /* 文字浮起感 */
+            text-shadow: 0 0 20px rgba(0,0,0,0.8);
+            box-shadow: 0 0 50px rgba(0,0,0,0.5);
         }
 
         #canvas-wrapper.recording-mode {
             /* 强制 wrapper 保持原有大小，不被子元素撑开 */
-            pointer-events: auto !important; /* 🔥 已开启交互：允许录制时拖拽视角和调整参数 */
+            pointer-events: auto !important; /* 🔥 保持交互开启 */
         }
 
         #canvas-wrapper.recording-mode canvas {
-            /* 核心修复：即使 Canvas 物理分辨率是 4K，
-               在屏幕上也强制缩放到 wrapper 的大小 */
+            /* 核心修复保持不变 */
             width: 100% !important;
             height: 100% !important;
-
-            /* 保持比例，防止 9:16 录制时画面被拉伸变形 */
             object-fit: contain;
         }
 
-        /* --- 修复录制状态栏位置 --- */
+        /* --- 修复录制状态栏位置 (Red Alert Capsule) --- */
         #recording-status {
             position: fixed;
 
-            /* 🔥 核心修改：从 top 改为 bottom */
-            top: auto;          /* 必须重置 top，否则可能冲突 */
-            bottom: 80px;       /* 64px(控制栏高) + 16px(间隙) */
+            /* 🔥 保持核心位置修改 */
+            top: auto;
+            bottom: 90px; /* 稍微再抬高一点点，视觉上更平衡 */
 
             left: 50%;
             transform: translateX(-50%); /* 水平居中 */
             z-index: 9999;
 
-            /* 保持原有的外观样式 */
-            background: rgba(0,0,0,0.7) !important;
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255,255,255,0.1) !important;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-            padding: 8px 16px !important;
-            font-variant-numeric: tabular-nums;
-            border-radius: 20px;
+            /* 样式升级：警示红磨砂胶囊 */
+            background: rgba(255, 69, 58, 0.9) !important;
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2) !important;
 
-            display: none; /* JS 会控制它的显示 */
+            /* 强烈的红色光晕投影 */
+            box-shadow: 0 4px 20px rgba(255, 69, 58, 0.5);
+
+            padding: 8px 24px !important; /* 加宽内边距 */
+            font-variant-numeric: tabular-nums;
+            border-radius: 30px; /* 完全圆润 */
+
+            display: none;
             align-items: center;
             color: white;
-            pointer-events: auto; /* 允许点击停止按钮 */
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            pointer-events: auto;
+
+            transition: all 0.3s;
         }
 
+        /* 导出遮罩层 */
         #export-modal {
             position: fixed;
             top: 0; left: 0;
             width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.7); /* 半透明黑背景 */
-            z-index: 5000; /* 保证在最顶层 */
+            /* 背景加深，聚焦中间内容 */
+            background: rgba(5, 5, 7, 0.85);
+            z-index: 5000;
 
             /* Flex 居中三件套 */
-            display: none; /* 默认隐藏，JS 会改为 flex */
+            display: none;
             justify-content: center;
             align-items: center;
-            backdrop-filter: blur(5px); /* 背景模糊更显高级 */
+            backdrop-filter: blur(10px);
         }
 
+        /* 模型预览窗口特定样式 */
         #model-preview-modal .modal-content {
-            width: 900px !important;    /* 强制变宽 */
-            max-width: 95vw !important; /* 防止超出小屏幕 */
-            height: 700px !important;   /* 增加高度 */
-            padding: 0 !important;      /* 模型窗口不需要内边距，因为内部有布局 */
+            width: 900px !important;
+            max-width: 95vw !important;
+            height: 700px !important;
+            padding: 0 !important;
             display: flex !important;
             flex-direction: column !important;
+
+            /* 确保大窗口也继承玻璃质感边框 */
+            border: 1px solid rgba(255,255,255,0.1) !important;
+            background: rgba(18, 18, 24, 0.95) !important; /* 不透明度稍高，防止模型背景干扰 */
         }
 
-        /* --- 重构后的 iOS 开关样式 (Fixed) --- */
+        /* --- 重构后的 iOS 开关样式 (Neon Toggle) --- */
         .ios-switch {
             position: relative;
             display: inline-block;
-            width: 40px;  /* 你可以在这里随意修改宽度，例如改成 40px */
-            height: 18px;
+            width: 40px;
+            height: 20px; /* 稍微加高 2px，手感更好 */
             vertical-align: middle;
             margin-left: 8px;
-
-            /* 如果你希望它能随父容器挤压而缩小，请注释掉下面这行；
-               但通常建议保留它，以免开关变形 */
             flex-shrink: 0;
         }
 
@@ -775,110 +1296,194 @@
             margin: 0;
         }
 
-        /* 轨道 (背景) */
+        /* 轨道 (Groove Track) */
         .ios-switch .slider {
             position: absolute;
             cursor: pointer;
-            top: 0; left: 0; right: 0; bottom: 0; /* 这里的 left/right:0 确保了 slider 永远填满父容器 */
-            background-color: rgba(255, 255, 255, 0.2);
-            transition: background-color 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
-            border-radius: 20px;
+            top: 0; left: 0; right: 0; bottom: 0;
+
+            /* 未选中：深色凹槽背景 */
+            background-color: rgba(0, 0, 0, 0.5);
             border: 1px solid rgba(255, 255, 255, 0.1);
-            box-sizing: border-box; /* 确保边框包含在尺寸内 */
+
+            /* 核心质感：内阴影制造深度 */
+            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5);
+
+            transition: all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+            border-radius: 20px;
+            box-sizing: border-box;
         }
 
-        /* 旋钮 (圆球) */
+        /* 旋钮 (Pearl Knob) */
         .ios-switch .slider:before {
             position: absolute;
             content: "";
-            height: 14px;
-            width: 14px;
+            height: 16px; /* 适配新的高度 */
+            width: 16px;
 
             /* 初始状态：靠左 */
             left: 1px;
             bottom: 1px;
 
-            background-color: white;
-            /* 改用 left 属性进行过渡，或者使用 calc 配合 transform */
+            /* 材质：微渐变珍珠白 */
+            background: linear-gradient(180deg, #ffffff 0%, #e0e0e0 100%);
+
+            /* 投影：让旋钮悬浮 */
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+
             transition: left 0.3s cubic-bezier(0.4, 0.0, 0.2, 1), transform 0.3s;
             border-radius: 50%;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
         }
 
-        /* 选中状态 - 轨道变色 */
+        /* 选中状态 - 轨道变色 (Active Glow) */
         .ios-switch input:checked + .slider {
             background-color: var(--accent-green);
-            border-color: transparent;
+            border-color: transparent; /* 激活时移除边框，让光晕扩散 */
+
+            /* 绿色荧光光晕 + 内部高光 */
+            box-shadow:
+                    0 0 10px rgba(48, 209, 88, 0.4),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.3);
         }
 
-        /* 选中状态 - 旋钮移动 (核心修复) */
+        /* 选中状态 - 旋钮移动 */
         .ios-switch input:checked + .slider:before {
-            /* 旧代码: transform: translateX(44px); -> 错误，会飞出去
-               新代码: 直接让他跑到右边，减去球宽(14px)和右边距(1px)
-            */
-            left: calc(100% - 15px); /* 100% - 球宽14px - 边距1px */
+            /* 动态计算位置：100% - 球宽16px - 边距1px - 边框修正 */
+            left: calc(100% - 18px);
 
-            /* 移除 translateX，因为我们已经用 left 重新定位了 */
+            /* 激活时旋钮也变亮 */
+            background: #fff;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.2);
             transform: none;
         }
 
-        /* 色块样式 */
+        /* --- 色块样式 (Jewel Swatches) --- */
         .color-swatch {
             width: 80%;
             aspect-ratio: 1; /* 正方形 */
-            border-radius: 50%; /* <-- 改为 50% 即为圆形 */
+            border-radius: 50%; /* 圆形 */
             cursor: pointer;
-            border: 2px solid transparent;
-            transition: transform 0.1s, border-color 0.1s;
+
+            /* 材质：带微弱内发光的宝石感 */
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            box-shadow:
+                    inset 0 2px 4px rgba(255, 255, 255, 0.2), /* 顶部高光 */
+                    0 2px 5px rgba(0, 0, 0, 0.5); /* 底部悬浮影 */
+
+            transition: transform 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94), border-color 0.2s;
             position: relative;
         }
 
         .color-swatch:hover {
-            transform: scale(1.1);
+            transform: scale(1.15); /* 放大更多一点 */
             z-index: 2;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            /* 悬停更亮 */
+            box-shadow:
+                    inset 0 2px 6px rgba(255, 255, 255, 0.4),
+                    0 4px 12px rgba(0, 0, 0, 0.6);
         }
 
+        /* 选中状态：双层光圈 */
         .color-swatch.active {
-            border-color: #fff;
-            box-shadow: 0 0 0 2px var(--accent-blue); /* 双重边框选中效果 */
+            border-color: #fff; /* 内圈纯白 */
+            box-shadow:
+                    0 0 0 2px var(--accent-blue), /* 外圈科技蓝 */
+                    0 0 15px var(--accent-blue);  /* 蓝色辉光 */
         }
 
-        /* 隐藏原生的颜色输入框，但保留点击区域（如果需要的话，或者直接移除） */
+        /* 隐藏原生的颜色输入框 (Hidden Trigger) */
         .color-trigger-btn {
             width: 20px;
             height: 20px;
             border-radius: 50%;
-            border: 1px solid rgba(255,255,255,0.3);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(255,255,255,0.05);
             cursor: pointer;
+            transition: all 0.2s;
+        }
+        .color-trigger-btn:hover {
+            background: rgba(255,255,255,0.1);
+            border-color: #fff;
         }
 
-        /* --- 框选矩形 (Marquee) --- */
+        /* --- 框选矩形 (Holographic Marquee) --- */
         .selection-box {
             position: absolute;
-            background: rgba(10, 132, 255, 0.2);
-            border: 1px solid rgba(10, 132, 255, 0.6);
-            pointer-events: none; /* 让鼠标事件穿透，防止干扰 */
+            /* 更加通透的蓝色 */
+            background: rgba(46, 154, 255, 0.1);
+            border: 1px solid rgba(46, 154, 255, 0.5);
+
+            /* 增加模糊，模拟全息扫描感 */
+            backdrop-filter: blur(2px);
+            /* 边缘微光 */
+            box-shadow: 0 0 10px rgba(46, 154, 255, 0.2);
+
+            pointer-events: none;
             z-index: 999;
             display: none;
+            border-radius: 4px;
         }
 
-        /* Clip 选中状态 */
+        /* --- Clip 选中状态 (High Energy State) --- */
         .clip.selected-clip {
-            background-color: rgba(255, 255, 255, 0.3) !important; /* 变亮 */
+            /* 背景变亮且带有蓝色倾向 */
+            background: rgba(46, 154, 255, 0.4) !important;
+
+            /* 边框高亮 */
             border-color: #fff !important;
-            box-shadow: 0 0 0 2px var(--accent-blue); /* 蓝色外发光边框 */
+
+            /* 强烈的发光效果，确保在深色背景下清晰可见 */
+            box-shadow:
+                    0 0 0 1px #fff,  /* 内圈锐利白线 */
+                    0 0 20px rgba(46, 154, 255, 0.6) !important; /* 外圈蓝色光晕 */
+
             z-index: 10;
+            transform: scale(1.01); /* 微微浮起 */
         }
+
+        /* 禁止选中文字 */
         #timeline-lanes, #tracks-area, .clip {
             user-select: none;
-            -webkit-user-select: none; /* Safari/Chrome */
+            -webkit-user-select: none;
         }
 
         /* 保持输入框可选中 */
         input, textarea {
             user-select: text !important;
             -webkit-user-select: text !important;
+        }
+
+        /* --- 加载动画 (Neon Dot Matrix) --- */
+        .loader {
+            width: 65px;
+            aspect-ratio: 1;
+            /* 这里保持你的动画逻辑，但优化颜色变量 */
+            --c: #ffffff; /* 粒子颜色 */
+
+            --g: radial-gradient(farthest-side, #0000 calc(95% - 3px), var(--c) calc(100% - 3px) 98%, #0000 101%) no-repeat;
+            background: var(--g), var(--g), var(--g);
+            background-size: 30px 30px;
+            animation: l10 1.5s infinite;
+
+            /* 增加发光滤镜，让粒子发光 */
+            filter: drop-shadow(0 0 5px rgba(255,255,255,0.5)) drop-shadow(0 0 10px var(--accent-blue));
+        }
+
+        @keyframes l10 {
+            0% { background-position: 0 0, 0 100%, 100% 100%; }
+            25% { background-position: 100% 0, 0 100%, 100% 100%; }
+            50% { background-position: 100% 0, 0 0, 100% 100%; }
+            75% { background-position: 100% 0, 0 0, 0 100%; }
+            100% { background-position: 100% 100%, 0 0, 0 100%; }
+        }
+
+        /* 确保加载遮罩层完全不透明 (Seamless Background) */
+        #loading {
+            /* 强制使用深色背景，与 body 保持一致 */
+            background: #050507 !important;
+            background-image: radial-gradient(circle at 50% -20%, #1c2540 0%, #050507 50%) !important;
+            backdrop-filter: blur(20px);
+            z-index: 99999; /* 确保最高 */
         }
 
     </style>
@@ -908,8 +1513,8 @@
     </div>
 </div>
 
-<div id="loading" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 9999; justify-content: center; align-items: center; color: white;">
-    Loading...
+<div id="loading" style="display: flex; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 9999; justify-content: center; align-items: center;">
+    <div class="loader"></div>
 </div>
 
 <div id="export-modal" style="display:none;">
@@ -7673,6 +8278,33 @@
         window.dispatchEvent(new Event('resize'));
     }, 100);
 
+    window.addEventListener('load', () => {
+        const loadingScreen = document.getElementById('loading');
+        if (loadingScreen) {
+            // 稍微延迟 500毫秒 消失，让动画展示一会儿，体验更流畅
+            setTimeout(() => {
+                loadingScreen.style.opacity = '0'; // 淡出效果
+                loadingScreen.style.transition = 'opacity 0.5s ease';
+
+                // 淡出动画结束后，隐藏元素并改回半透明背景（为后续文件加载做准备）
+                setTimeout(() => {
+                    loadingScreen.style.display = 'none';
+                    loadingScreen.style.opacity = '1';
+                    // 恢复成半透明背景，用于后续上传文件时的 Loading
+                    loadingScreen.style.background = 'rgba(0,0,0,0.4)';
+                }, 500);
+            }, 800);
+        }
+    });
+
+    // 防止长时间卡死：如果 5秒还没加载完，强制关闭
+    setTimeout(() => {
+        const loadingScreen = document.getElementById('loading');
+        if(loadingScreen && loadingScreen.style.display !== 'none') {
+            loadingScreen.style.display = 'none';
+            loadingScreen.style.background = 'rgba(0,0,0,0.4)';
+        }
+    }, 5000);
 </script>
 </body>
 </html>
