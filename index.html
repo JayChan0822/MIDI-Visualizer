@@ -1170,7 +1170,7 @@
 
         /* --- 全局拖拽覆盖 (Import Zone) --- */
         body.global-drag-over::after {
-            content: '📂 释放以导入文件 (MIDI / Audio / Image / Video / JSON)';
+            content: '导入文件 (MIDI / Audio / Image / Video / JSON)';
             position: fixed;
             /* 稍微留出边距，设计感更强 */
             top: 12px; left: 12px; right: 12px; bottom: 12px;
@@ -1998,6 +1998,7 @@
                     <strong style="color: #64d2ff;">全新设计语言:</strong>
                     采用 <strong>"Deep Midnight Glass"</strong>风格。引入全局环境光效、3D 悬浮面板与高斯模糊景深。
                 </li>
+                <li>加入“shift + 滚轮”滚动播放线的功能</li>
             </ul>
 
             <div style="height:1px; background:rgba(255,255,255,0.1); margin: 15px 0;"></div>
@@ -5560,6 +5561,57 @@
             DOM.timelineLanes.scrollTop += e.deltaY;
             DOM.timelineLanes.scrollLeft += e.deltaX; // 如果你有横向触摸板，这也支持
         }, { passive: false });
+
+        // ============================================================
+        // 🔥 增强版 Scrubbing：支持 时间轴 + 3D视图 (Shift + 滚轮)
+        // ============================================================
+
+        // 定义一个通用的滚轮处理函数
+        const handleShiftScrub = (e) => {
+            // 只有按住 Shift 时才触发
+            if (e.shiftKey) {
+                // 1. 阻止默认行为 (防止页面滚动)
+                e.preventDefault();
+                // 2. 阻止冒泡 (防止 3D 场景缩放 / 防止事件冲突)
+                e.stopPropagation();
+
+                // --- 灵敏度设置 ---
+                // 建议：可以根据 STATE.pxPerSec 动态调整，这里暂时固定
+                const sensitivity = 0.01;
+
+                // --- 滚轮数值读取 ---
+                // 浏览器特性修复：按住 Shift 时，很多浏览器会把垂直滚动(Y)映射为水平滚动(X)
+                // 所以我们取绝对值较大的那个轴作为输入
+                const rawDelta = (Math.abs(e.deltaX) > Math.abs(e.deltaY)) ? e.deltaX : e.deltaY;
+
+                // --- 🔥 方向控制 (关键修改) ---
+                // 1 = 向下滚动是前进 (Time +)
+                // -1 = 向下滚动是后退 (Time -)
+                // 你要求：向下滚动(正数) -> 播放线往前(时间增加) -> 所以用 1
+                const direction = -1;
+
+                // --- 计算新时间 ---
+                let newTime = STATE.currentTime + (rawDelta * sensitivity * direction);
+
+                // --- 边界限制 ---
+                if (newTime < 0) newTime = 0;
+                if (newTime > STATE.totalDuration) newTime = STATE.totalDuration;
+
+                // --- 执行跳转 ---
+                seekTo(newTime);
+            }
+        };
+
+        // 1. 绑定到时间轴区域 (保持原有功能)
+        DOM.timelineLanes.addEventListener('wheel', handleShiftScrub, { passive: false });
+
+        // 2. 🔥 绑定到 3D 可视化区域 (新增功能)
+        // 关键点：使用 { capture: true } 开启捕获模式
+        // 这能让我们在 OrbitControls (缩放功能) 收到事件之前，先拦截下来
+        const vizContainer = document.getElementById('visualizer-section');
+        if (vizContainer) {
+            vizContainer.addEventListener('wheel', handleShiftScrub, { passive: false, capture: true });
+        }
 
         // 🔥 新增：点击标尺区域也能跳转时间 (Seek)
         DOM.rulerContent.addEventListener('mousedown', (e) => {
