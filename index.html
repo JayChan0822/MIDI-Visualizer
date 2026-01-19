@@ -1608,7 +1608,7 @@
 </script>
 
 <script type="module">
-    import { inject } from '@vercel/analytics'; // 1. 引入
+    import { Analytics } from "@vercel/analytics/next"
     inject(); // 2. 启动监控
     import * as THREE from 'three';
     import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
