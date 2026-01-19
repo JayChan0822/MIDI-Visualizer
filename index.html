@@ -889,6 +889,7 @@
                 "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
                 "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/",
                 "@tonejs/midi": "https://esm.sh/@tonejs/midi"
+                "@vercel/analytics": "https://cdn.jsdelivr.net/npm/@vercel/analytics/+esm"
             }
         }
     </script>
@@ -1607,6 +1608,8 @@
 </script>
 
 <script type="module">
+    import { inject } from '@vercel/analytics'; // 1. 引入
+    inject(); // 2. 启动监控
     import * as THREE from 'three';
     import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
     import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
