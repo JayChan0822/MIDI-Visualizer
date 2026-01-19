@@ -1392,31 +1392,31 @@
             </ul>
 
             <p style="color: #aaa; font-size: 12px; margin-top: 0;">2026-01-17 1.6.0</p>
-            <ul style="padding-left: 20px; color: #ddd; line-height: 1.6;">
+            <ul style="padding-left: 20px; color: #888; line-height: 1.6;">
                 <li>新增：事件选择 - 支持拖拽框选多个 Clip，配合 Shift 键可增量加选</li>
                 <li>优化：背景视频时间线同步 - 背景视频现已与时间轴完全对齐，不再独立播放</li>
             </ul>
 
             <p style="color: #aaa; font-size: 12px; margin-top: 0;">2026-01-16 1.5.2</p>
-            <ul style="padding-left: 20px; color: #ddd; line-height: 1.6;">
+            <ul style="padding-left: 20px; color: #888; line-height: 1.6;">
                 <li>紧急修复：视频无法录制</li>
             </ul>
 
             <p style="color: #aaa; font-size: 12px; margin-top: 0;">2026-01-16 1.5.1</p>
-            <ul style="padding-left: 20px; color: #ddd; line-height: 1.6;">
+            <ul style="padding-left: 20px; color: #888; line-height: 1.6;">
                 <li>新增：box-line (Outlined) 音符样式</li>
                 <li>优化：增强录制稳定性</li>
             </ul>
 
             <p style="color: #aaa; font-size: 12px; margin-top: 0;">2026-01-15 1.5.0</p>
-            <ul style="padding-left: 20px; color: #ddd; line-height: 1.6;">
+            <ul style="padding-left: 20px; color: #888; line-height: 1.6;">
                 <li>新增：3D 星空背景 (Starfield)，支持 UI 开关控制</li>
                 <li>优化：快捷键指南、视角参数折叠状态记忆</li>
                 <li>修复：Windows 系统浏览器下变速/变调问题</li>
             </ul>
 
             <p style="color: #aaa; font-size: 12px; margin-top: 0;">2026-01-14 1.4.0</p>
-            <ul style="padding-left: 20px; color: #ddd; line-height: 1.6;">
+            <ul style="padding-left: 20px; color: #888; line-height: 1.6;">
                 <li>新增：颜色选择器</li>
                 <li>新增：高光样式调节</li>
                 <li>新增：全局 ESC 键可关闭所有弹窗</li>
@@ -1428,7 +1428,7 @@
                 <li>修复：删除轨道后调节滑块会导致“僵尸音符”复活的 Bug</li>
             </ul>
             <p style="color: #aaa; font-size: 12px; margin-top: 0;">2026-01-14 1.3.0</p>
-            <ul style="padding-left: 20px; color: #ddd; line-height: 1.6;">
+            <ul style="padding-left: 20px; color: #888; line-height: 1.6;">
                 <li>新增：左上角版本信息查看入口</li>
                 <li>新增：支持音频开头的静音自动剪切</li>
                 <li>新增：工程支持直接保存回原文件 (Ctrl+S / Cmd+S)</li>
@@ -7617,51 +7617,47 @@
     // 启动
     initController();
     window.addEventListener('beforeunload', () => {
-        // 1. 停止动画循环
+        // 1. 立即切断动画循环标志位
+        // 只要这个为 false，animate() 里的渲染逻辑就会停止
         STATE.isPlaying = false;
 
-        // 如果你有保存 animationId，最好在这里 cancelAnimationFrame(id)
-        // 但由于你的 animate 是递归调用的，设置 isPlaying = false
-        // 配合下面的强制置空，通常足够打断循环
-
-        // 2. 停止并释放音频上下文
+        // 2. 停止 HTML5 Audio (防止关闭后声音残留)
         if (DOM.audio) {
             DOM.audio.pause();
             DOM.audio.src = "";
+            DOM.audio.load();
         }
-        if (sharedAudioCtx) {
+
+        // 3. 关闭 Web Audio Context (这是系统级资源，建议显式关闭)
+        if (sharedAudioCtx && sharedAudioCtx.state !== 'closed') {
             sharedAudioCtx.close().catch(e => {});
-            sharedAudioCtx = null;
         }
 
-        // 3. 强制清空历史记录栈 (释放巨大的 Base64 字符串)
-        HistoryMgr.undoStack = [];
-        HistoryMgr.redoStack = [];
-
-        // 4. 释放 Three.js 资源 (显存)
-        if (renderer) {
-            renderer.dispose();
-            renderer.forceContextLoss(); // 强制丢失 WebGL 上下文
-            renderer.domElement = null;
+        // 4. 停止背景视频
+        if (bgVideoElement) {
+            bgVideoElement.pause();
+            bgVideoElement.src = "";
         }
 
-        if (scene) {
-            scene.traverse(object => {
-                if (object.geometry) object.geometry.dispose();
-                if (object.material) {
-                    if (Array.isArray(object.material)) {
-                        object.material.forEach(m => m.dispose());
-                    } else {
-                        object.material.dispose();
-                    }
-                }
-            });
+        // 5. 停止录制 (如果正在录制)
+        if (typeof ExportMgr !== 'undefined' && ExportMgr.isRecording) {
+            ExportMgr.mediaRecorder = null; // 直接切断引用，不再调用 stop() 以免触发回调逻辑
         }
 
-        // 5. 释放大变量
-        currentBgBase64 = null;
-        STATE.tracks = [];
-        STATE.clips = [];
+        // 6. 清空历史记录栈引用 (快速释放内存引用，但不执行繁重的销毁逻辑)
+        // 让浏览器 GC 自己去处理，不要手动遍历
+        if (typeof HistoryMgr !== 'undefined') {
+            HistoryMgr.undoStack = null;
+            HistoryMgr.redoStack = null;
+        }
+
+        // ❌ 删除：不要调用 renderer.forceContextLoss()，这会导致 Chrome 崩溃
+        // ❌ 删除：不要遍历 scene.traverse()，这会导致主线程卡死
+
+        // 7. 简单断开渲染器引用
+        renderer = null;
+        scene = null;
+        camera = null;
     });
 
     init3D();
