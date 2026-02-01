@@ -2759,33 +2759,89 @@
                     break;
 
                 case 'record_midi':
-                    // logic: Undo = 删除这些音符; Redo = 加回这些音符
                     const session = cmd.sessionData;
 
                     if (isUndo) {
                         // === 撤销录音 ===
+                        // 1. 准备一个集合，记录本次撤销涉及到的 Clip，以便后续检查是否变空
+                        const potentiallyEmptyClips = new Set();
+
+                        // 初始化/重置暂存数组（用于 Redo 时恢复 Clip）
+                        cmd.deletedClipsInfo = [];
+
                         session.forEach(item => {
                             const track = STATE.tracks.find(t => t.id === item.trackId);
                             if (track) {
-                                // 尝试通过 ID 找 Clip，找不到就找第一个 (容错)
-                                const clip = track.clips.find(c => c.id === item.clipId) || track.clips[0];
+                                // 精确查找 Clip，不再使用 || track.clips[0] 这种模糊匹配，防止误删
+                                const clip = track.clips.find(c => c.id === item.clipId);
                                 if (clip && clip.data.notes) {
-                                    // 从数组中移除该音符对象
+                                    // 移除音符
                                     const idx = clip.data.notes.indexOf(item.note);
                                     if (idx > -1) clip.data.notes.splice(idx, 1);
 
-                                    // 标记刷新
-                                    clip.build3D();
-                                    clip.updateDOMPosition();
+                                    // 标记该 Clip 需要检查
+                                    potentiallyEmptyClips.add(clip);
                                 }
                             }
                         });
+
+                        // 2. 检查 Clip 是否变空，如果是则删除
+                        potentiallyEmptyClips.forEach(clip => {
+                            if (clip.data.notes.length === 0) {
+                                // 🔥 关键：保存 Clip 信息，以便 Redo 时能复活它
+                                cmd.deletedClipsInfo.push({
+                                    trackId: clip.track.id,
+                                    clipId: clip.id,
+                                    start: clip.startTime,
+                                    duration: clip.duration,
+                                    name: clip.name
+                                });
+
+                                // 彻底销毁 Clip
+                                clip.destroy(); // 销毁 DOM 和 3D 资源
+
+                                // 从轨道数据中移除
+                                const tIdx = clip.track.clips.indexOf(clip);
+                                if (tIdx > -1) clip.track.clips.splice(tIdx, 1);
+
+                                // 从全局 STATE 中移除
+                                const gIdx = STATE.clips.indexOf(clip);
+                                if (gIdx > -1) STATE.clips.splice(gIdx, 1);
+
+                            } else {
+                                // 如果还有剩余音符（比如是在旧 Clip 上叠录），则只刷新显示
+                                clip.build3D();
+                                clip.updateDOMPosition();
+                            }
+                        });
+
                     } else {
-                        // === 重做录音 ===
+                        // === 重做录音 (Redo) ===
+
+                        // 1. 🔥 先复活被 Undo 删除的 Clip (如果有)
+                        if (cmd.deletedClipsInfo && cmd.deletedClipsInfo.length > 0) {
+                            cmd.deletedClipsInfo.forEach(info => {
+                                const track = STATE.tracks.find(t => t.id === info.trackId);
+                                if (track) {
+                                    // 防止重复创建
+                                    let existing = track.clips.find(c => c.id === info.clipId);
+                                    if (!existing) {
+                                        // 创建新 Clip
+                                        const newClip = track.addClip(info.start, info.duration, { notes: [] }, info.name);
+                                        // ⚡️ 强制修正 ID：必须和原来的 ID 一样，否则下面的音符塞不进去
+                                        // addClip 会自动让 STATE.nextClipId++，我们要回退这个计数，并覆盖 ID
+                                        STATE.nextClipId--;
+                                        newClip.id = info.clipId;
+                                    }
+                                }
+                            });
+                        }
+
+                        // 2. 再把音符塞回去
                         session.forEach(item => {
                             const track = STATE.tracks.find(t => t.id === item.trackId);
                             if (track) {
-                                const clip = track.clips.find(c => c.id === item.clipId) || track.clips[0];
+                                const clip = track.clips.find(c => c.id === item.clipId);
                                 if (clip && clip.data.notes) {
                                     clip.data.notes.push(item.note);
                                     clip.build3D();
@@ -2795,7 +2851,7 @@
                         });
                     }
                     break;
-
+                    
                 case 'delete_events':
                     if (isUndo) {
                         cmd.restoredClips = [];
