@@ -2851,7 +2851,7 @@
                         });
                     }
                     break;
-                    
+
                 case 'delete_events':
                     if (isUndo) {
                         cmd.restoredClips = [];
@@ -8317,8 +8317,8 @@
         // 3D 相机瞬移
         const targetX = STATE.currentTime * STATE.playbackSpeed;
         const delta = targetX - cameraTargetX;
-        camera.position.x += delta;
-        controls.target.x = targetX;
+        camera.position.x += delta;    // 相机移动 delta
+        controls.target.x += delta;
         cameraTargetX = targetX;
 
         if (bgVideoElement && bgVideoElement.duration > 0) {
