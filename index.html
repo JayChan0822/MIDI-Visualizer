@@ -1391,6 +1391,102 @@
                     0 0 15px var(--accent-blue);  /* 蓝色辉光 */
         }
 
+        /* 新增：自定义颜色按钮 (彩虹渐变) */
+        .color-swatch.custom-picker {
+            background: linear-gradient(135deg, #ff3b30, #ff9500, #ffcc00, #4cd964, #5ac8fa, #007aff, #5856d6, #ff2d55);
+            position: relative;
+            overflow: hidden; /* 确保 input 不溢出 */
+        }
+
+        /* 隐藏原生的 input 控件，但铺满整个按钮以响应点击 */
+        .color-swatch.custom-picker input[type="color"] {
+            position: absolute;
+            top: 0; left: 0;
+            width: 200%; /* 放大以确保在某些浏览器中能完全覆盖 */
+            height: 200%;
+            opacity: 0; /* 视觉隐藏 */
+            cursor: pointer;
+            padding: 0;
+            margin: -50%;
+        }
+
+        /* --- 彩虹按钮 (入口) --- */
+        .color-swatch.rainbow-entry {
+            background: linear-gradient(135deg, #ff3b30, #ff9500, #ffcc00, #4cd964, #5ac8fa, #007aff, #5856d6, #ff2d55);
+            position: relative;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+        }
+        .color-swatch.rainbow-entry::after {
+            content: '+';
+            position: absolute; top:50%; left:50%; transform:translate(-50%, -50%);
+            color: white; font-weight: bold; font-size: 16px; text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+        }
+
+        /* --- 自定义调色盘面板 (Hidden Panel) --- */
+        #cp-custom-panel {
+            display: none; /* 默认隐藏 */
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 20px;
+            animation: fadeIn 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+
+        /* 饱和度/亮度 选取区域 (SB Box) */
+        .cp-sb-box {
+            width: 100%; height: 150px;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.2);
+            position: relative;
+            cursor: crosshair;
+            /* 背景色由 JS 动态设置 (Hue), 上层覆盖 饱和度(白->透) 和 亮度(透->黑) */
+            background-color: #ff0000;
+            background-image:
+                    linear-gradient(to top, #000, transparent),
+                    linear-gradient(to right, #fff, transparent);
+            overflow: hidden;
+        }
+
+        /* 选取手柄 (Circle Handle) */
+        .cp-handle {
+            width: 12px; height: 12px;
+            border-radius: 50%;
+            border: 2px solid white;
+            box-shadow: 0 0 5px rgba(0,0,0,0.5);
+            position: absolute;
+            transform: translate(-50%, -50%);
+            pointer-events: none; /* 让点击穿透 */
+        }
+
+        /* 色相条 (Hue Slider) */
+        .cp-hue-slider {
+            width: 100%; height: 16px;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.2);
+            position: relative;
+            cursor: pointer;
+            /* 完美的彩虹渐变 */
+            background: linear-gradient(to right, #ff0000 0%, #ffff00 17%, #00ff00 33%, #00ffff 50%, #0000ff 67%, #ff00ff 83%, #ff0000 100%);
+        }
+
+        .cp-hue-handle {
+            width: 8px; height: 100%;
+            background: #fff;
+            border: 1px solid rgba(0,0,0,0.2);
+            position: absolute;
+            top: 0; left: 0;
+            transform: translateX(-50%);
+            border-radius: 2px;
+            box-shadow: 0 0 5px rgba(0,0,0,0.3);
+            pointer-events: none;
+        }
+
+        /* 返回网格按钮 */
+        .btn-back-grid {
+            font-size: 10px; color: #aaa; background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1); width: 100%; margin-bottom: 10px;
+        }
+        .btn-back-grid:hover { background: rgba(255,255,255,0.1); color: #fff; }
+
         /* 隐藏原生的颜色输入框 (Hidden Trigger) */
         .color-trigger-btn {
             width: 20px;
@@ -1592,7 +1688,7 @@
                 <span class="logo-text title-main">MIDI</span>
                 <span class="logo-text title-sub">Visualizer</span>
             </div>
-            <span class="version-tag">v2.0.0</span>
+            <span class="version-tag">v2.0.1</span>
         </div>
 
         <div class="toolbar-separator"></div>
@@ -1985,23 +2081,37 @@
                 text-shadow: none;   /* 去掉可能的文字阴影 */
                 line-height: 1.2;
             ">
-                v2.0.0
+                v2.0.1
             </span>
         </h3>
 
         <div style="height: 250px; overflow-y: auto; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px; margin-bottom: 20px;">
             <p style="color: #fff; font-weight: 700; font-size: 13px; margin-top: 0; border-left: 3px solid #0a84ff; padding-left: 8px;">
-                2026-01-20 v2.0.0 (UI UX Pro Max)
+                2026-02-02 v2.0.1 (Color Studio Update)
             </p>
             <ul style="padding-left: 20px; color: #ddd; line-height: 1.6; margin-bottom: 20px;">
                 <li>
-                    <strong style="color: #64d2ff;">全新设计语言:</strong>
+                    <strong style="color: #bf5af2;">全新自定义调色盘:</strong>
+                    告别系统原生取色器，内置了深度集成的 <strong>HSV 玻璃态调色板</strong>。支持色相(Hue)与饱和度/明度(SB)的精准调节，UI 风格与宿主完全统一。
+                </li>
+                <li>
+                    <strong style="color: #30d158;">彩虹入口:</strong>
+                    色块网格末尾新增“彩虹按钮”，点击即可平滑展开自定义面板，色彩创作不再受限。
+                </li>
+            </ul>
+
+            <div style="height:1px; background:rgba(255,255,255,0.1); margin: 15px 0;"></div>
+
+            <p style="color: #aaa; font-size: 12px; margin-top: 0;">
+                2026-01-20 v2.0.0 (UI UX Pro Max)
+            </p>
+            <ul style="padding-left: 20px; color: #888; line-height: 1.6;">
+                <li>
+                    <strong>全新设计语言:</strong>
                     采用 <strong>"Deep Midnight Glass"</strong>风格。引入全局环境光效、3D 悬浮面板与高斯模糊景深。
                 </li>
                 <li>加入“shift + 滚轮”滚动播放线的功能</li>
             </ul>
-
-            <div style="height:1px; background:rgba(255,255,255,0.1); margin: 15px 0;"></div>
 
             <p style="color: #aaa; font-size: 12px; margin-top: 0;">2026-01-17 1.6.1</p>
             <ul style="padding-left: 20px; color: #888; line-height: 1.6;">
@@ -2800,109 +2910,252 @@
         preview: document.getElementById('cp-preview'),
         title: document.getElementById('cp-target-name'),
 
-        // 新增：扩展控件的引用
+        // 扩展控件引用
         extraControls: document.getElementById('cp-extra-controls'),
         widthSlider: document.getElementById('cp-width-slider'),
         widthValDisplay: document.getElementById('cp-width-val'),
 
+        // 自定义调色盘 DOM 引用 (将在 init 中创建)
+        customPanel: null,
+        sbBox: null,
+        sbHandle: null,
+        hueSlider: null,
+        hueHandle: null,
+
+        // 内部状态
+        hsv: { h: 0, s: 1, v: 1 }, // h:0-360, s:0-1, v:0-1
+        isCustomMode: false,
+        isDraggingSB: false,
+        isDraggingHue: false,
+
         onChange: null,
         onConfirm: null,
-        // 新增：宽度变化回调
         onWidthChange: null,
         tempColor: '#ffffff',
-        // 新增：标记是否处于高光编辑模式
         isHighlightMode: false,
 
+        // 注意：这里去掉了最后一个颜色，留给“彩虹按钮”
         presets: [
             '#ff453a', '#ff9f0a', '#ffd60a', '#30d158', '#64d2ff', '#0a84ff',
             '#5e5ce6', '#bf5af2', '#ff375f', '#ac8e68', '#98989d', '#86868b',
             '#ffffff', '#888888', '#555555', '#2a2a2a', '#1c1c1e', '#000000',
-            '#e0aaff', '#9d4edd', '#240046', '#a2d2ff', '#bde0fe', '#ffafcc'
+            '#e0aaff', '#9d4edd', '#240046', '#a2d2ff', '#bde0fe' // 删除了最后一个，总数23个
         ],
 
         init() {
-            // 1. 初始化 3D 预览引擎
             ColorPickerPreview3D.init();
 
-            // 2. 生成色块 (保持不变)
+            // 1. 构建基础 DOM：Grid 中插入 Swatches
             this.grid.innerHTML = '';
             this.presets.forEach(color => {
                 const el = document.createElement('div');
                 el.className = 'color-swatch';
                 el.style.backgroundColor = color;
-                el.onclick = () => this.selectColor(color);
+                el.onclick = () => {
+                    this.selectColor(color);
+                    // 选中预设时，更新 HSV 状态以便切换模式时同步
+                    const [h, s, v] = this.hexToHsv(color);
+                    this.hsv = { h, s, v };
+                };
                 this.grid.appendChild(el);
             });
 
-            // 3. 绑定基础事件 (保持不变)
+            // 2. 插入“彩虹按钮”到最后一个位置
+            const rainbowBtn = document.createElement('div');
+            rainbowBtn.className = 'color-swatch rainbow-entry';
+            rainbowBtn.title = "自定义颜色";
+            rainbowBtn.onclick = () => this.toggleCustomMode(true);
+            this.grid.appendChild(rainbowBtn);
+
+            // 3. 构建自定义调色盘 UI (插入到 Grid 上方)
+            // 如果还没创建过容器
+            if (!document.getElementById('cp-custom-panel')) {
+                const panel = document.createElement('div');
+                panel.id = 'cp-custom-panel';
+                panel.innerHTML = `
+                    <button class="btn btn-back-grid">← 返回预设网格</button>
+                    <div class="cp-sb-box">
+                        <div class="cp-handle"></div>
+                    </div>
+                    <div class="cp-hue-slider">
+                        <div class="cp-hue-handle"></div>
+                    </div>
+                `;
+                // 插入到 grid 之前
+                this.grid.parentNode.insertBefore(panel, this.grid);
+
+                // 绑定引用
+                this.customPanel = panel;
+                this.sbBox = panel.querySelector('.cp-sb-box');
+                this.sbHandle = panel.querySelector('.cp-handle');
+                this.hueSlider = panel.querySelector('.cp-hue-slider');
+                this.hueHandle = panel.querySelector('.cp-hue-handle');
+
+                // 绑定事件
+                panel.querySelector('.btn-back-grid').onclick = () => this.toggleCustomMode(false);
+                this.initCustomEvents();
+            }
+
+            // 4. 绑定底部原有事件
             document.getElementById('cp-cancel-btn').addEventListener('click', () => this.close());
             document.getElementById('cp-confirm-btn').addEventListener('click', () => this.confirm());
+
+            // Hex 输入框同步
             this.input.addEventListener('input', (e) => {
                 const val = e.target.value;
                 if (/^#[0-9A-F]{6}$/i.test(val)) {
                     this.selectColor(val, false);
+                    // 同步 HSV
+                    const [h, s, v] = this.hexToHsv(val);
+                    this.hsv = { h, s, v };
+                    if (this.isCustomMode) this.updateCustomUI();
                 }
             });
+            this.input.addEventListener('blur', () => {
+                // 离焦时强制格式化，防止输入不完整
+                this.input.value = this.tempColor;
+            });
+
             this.modal.addEventListener('click', (e) => {
                 if (e.target === this.modal) this.close();
             });
 
-            // 4. 新增：绑定滑块事件
+            // 扩展控件逻辑
             this.widthSlider.addEventListener('input', (e) => {
                 const val = parseFloat(e.target.value);
-                // 更新显示数值
                 this.widthValDisplay.innerText = val.toFixed(1);
-
-                // 更新 Modal 内的 3D 预览
-                if (this.isHighlightMode) {
-                    ColorPickerPreview3D.update(this.tempColor, val);
-                }
-
-                // 触发外部回调，更新主场景
-                if (this.onWidthChange) {
-                    this.onWidthChange(val);
-                }
+                if (this.isHighlightMode) ColorPickerPreview3D.update(this.tempColor, val);
+                if (this.onWidthChange) this.onWidthChange(val);
             });
         },
 
-        /**
-         * 打开颜色盘
-         * @param {string} initialColor - 初始颜色 hex
-         * @param {string} title - 标题后缀
-         * @param {function} onConfirm - 确定回调
-         * @param {function} onChange - 颜色实时预览回调
-         * @param {object} extraConfig - (新增) 额外配置对象 { isHighlight: bool, initialWidth: float, onWidthChange: func }
-         */
+        initCustomEvents() {
+            // --- 饱和度/明度 (SB Box) 拖拽 ---
+            const updateSB = (e) => {
+                const rect = this.sbBox.getBoundingClientRect();
+                let x = e.clientX - rect.left;
+                let y = e.clientY - rect.top;
+
+                // 限制范围
+                x = Math.max(0, Math.min(x, rect.width));
+                y = Math.max(0, Math.min(y, rect.height));
+
+                // 计算 S 和 V
+                this.hsv.s = x / rect.width;
+                this.hsv.v = 1 - (y / rect.height);
+
+                this.applyHsvToColor();
+                this.updateHandlePos();
+            };
+
+            this.sbBox.addEventListener('mousedown', (e) => {
+                this.isDraggingSB = true;
+                updateSB(e);
+            });
+
+            // --- 色相 (Hue Slider) 拖拽 ---
+            const updateHue = (e) => {
+                const rect = this.hueSlider.getBoundingClientRect();
+                let x = e.clientX - rect.left;
+                x = Math.max(0, Math.min(x, rect.width));
+
+                // 计算 Hue (0-360)
+                this.hsv.h = (x / rect.width) * 360;
+
+                this.applyHsvToColor();
+                this.updateHandlePos();
+                // 也要更新 SB Box 的底色
+                this.sbBox.style.backgroundColor = `hsl(${this.hsv.h}, 100%, 50%)`;
+            };
+
+            this.hueSlider.addEventListener('mousedown', (e) => {
+                this.isDraggingHue = true;
+                updateHue(e);
+            });
+
+            // 全局鼠标监听 (防止拖出区域失效)
+            window.addEventListener('mousemove', (e) => {
+                if (this.isDraggingSB) { e.preventDefault(); updateSB(e); }
+                if (this.isDraggingHue) { e.preventDefault(); updateHue(e); }
+            });
+
+            window.addEventListener('mouseup', () => {
+                this.isDraggingSB = false;
+                this.isDraggingHue = false;
+            });
+        },
+
+        toggleCustomMode(showCustom) {
+            this.isCustomMode = showCustom;
+            if (showCustom) {
+                this.grid.style.display = 'none';
+                this.customPanel.style.display = 'flex';
+                // 进入时，根据当前颜色更新 UI
+                this.updateCustomUI();
+            } else {
+                this.grid.style.display = 'grid';
+                this.customPanel.style.display = 'none';
+            }
+        },
+
+        // 从 HSV 计算 Hex 并应用
+        applyHsvToColor() {
+            const hex = this.hsvToHex(this.hsv.h, this.hsv.s, this.hsv.v);
+            this.selectColor(hex, true);
+        },
+
+        // 更新手柄位置
+        updateHandlePos() {
+            // Hue
+            const huePercent = (this.hsv.h / 360) * 100;
+            this.hueHandle.style.left = `${huePercent}%`;
+
+            // SB
+            const sPercent = this.hsv.s * 100;
+            const vPercent = (1 - this.hsv.v) * 100;
+            this.sbHandle.style.left = `${sPercent}%`;
+            this.sbHandle.style.top = `${vPercent}%`;
+
+            this.sbBox.style.backgroundColor = `hsl(${this.hsv.h}, 100%, 50%)`;
+        },
+
+        // 当外部传入 Hex 时，反向更新 UI
+        updateCustomUI() {
+            if (this.customPanel && this.customPanel.style.display !== 'none') {
+                this.updateHandlePos();
+            }
+        },
+
+        // --- 核心逻辑 ---
+
         open(initialColor, title, onConfirm, onChange = null, extraConfig = null) {
             this.tempColor = initialColor;
             this.onConfirm = onConfirm;
             this.onChange = onChange;
             this.title.innerText = title || "";
 
-            // --- 处理扩展配置 ---
+            // 初始化 HSV
+            const [h, s, v] = this.hexToHsv(initialColor);
+            this.hsv = { h, s, v };
+
+            // 扩展控件逻辑
             if (extraConfig && extraConfig.isHighlight) {
                 this.isHighlightMode = true;
-                // 显示扩展区域
                 this.extraControls.style.display = 'block';
-                // 设置滑块初始值
                 const initWidth = extraConfig.initialWidth || 1.0;
                 this.widthSlider.value = initWidth;
                 this.widthValDisplay.innerText = initWidth.toFixed(1);
                 this.onWidthChange = extraConfig.onWidthChange;
-
-                // 打开时立即更新一次 3D 预览
                 ColorPickerPreview3D.update(this.tempColor, initWidth);
-                // 重新调整渲染器大小以适应容器 (防止首次打开尺寸不对)
                 ColorPickerPreview3D.renderer.setSize(360, 80);
-
             } else {
                 this.isHighlightMode = false;
-                // 隐藏扩展区域
                 this.extraControls.style.display = 'none';
                 this.onWidthChange = null;
             }
-            // -----------------------
 
+            // 默认显示网格
+            this.toggleCustomMode(false);
             this.modal.style.display = 'flex';
             this.selectColor(initialColor);
         },
@@ -2910,29 +3163,22 @@
         selectColor(color, updateInput = true) {
             this.tempColor = color;
             this.preview.style.backgroundColor = color;
-            if (updateInput) this.input.value = color;
+            if (updateInput) this.input.value = color.toUpperCase();
 
-            Array.from(this.grid.children).forEach(child => {
-                // 简单清除 active 状态
-                child.classList.remove('active');
-            });
+            // 移除网格选中态
+            Array.from(this.grid.children).forEach(child => child.classList.remove('active'));
 
-            // 如果在高光模式，颜色改变时也要更新 3D 预览
+            // 实时预览回调
             if (this.isHighlightMode) {
                 ColorPickerPreview3D.update(this.tempColor, this.widthSlider.value);
             }
-
             if (this.onChange) {
                 this.onChange(this.tempColor);
             }
         },
 
         confirm() {
-            if (this.onConfirm) {
-                // 如果是高光模式，确认时可能需要把最终宽度也传出去(如果需要记录历史)
-                // 目前只传了颜色，宽度是实时更新的
-                this.onConfirm(this.tempColor);
-            }
+            if (this.onConfirm) this.onConfirm(this.tempColor);
             this.close();
         },
 
@@ -2942,6 +3188,52 @@
             this.onChange = null;
             this.onWidthChange = null;
             this.isHighlightMode = false;
+        },
+
+        // --- 颜色算法工具 ---
+
+        // Hex -> HSV
+        hexToHsv(hex) {
+            let r = parseInt(hex.substring(1, 3), 16) / 255;
+            let g = parseInt(hex.substring(3, 5), 16) / 255;
+            let b = parseInt(hex.substring(5, 7), 16) / 255;
+            let max = Math.max(r, g, b), min = Math.min(r, g, b);
+            let h, s, v = max;
+            let d = max - min;
+            s = max === 0 ? 0 : d / max;
+            if (max === min) { h = 0; }
+            else {
+                switch (max) {
+                    case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+                    case g: h = (b - r) / d + 2; break;
+                    case b: h = (r - g) / d + 4; break;
+                }
+                h /= 6;
+            }
+            return [h * 360, s, v];
+        },
+
+        // HSV -> Hex
+        hsvToHex(h, s, v) {
+            let r, g, b;
+            let i = Math.floor(h / 60);
+            let f = h / 60 - i;
+            let p = v * (1 - s);
+            let q = v * (1 - f * s);
+            let t = v * (1 - (1 - f) * s);
+            switch (i % 6) {
+                case 0: r = v; g = t; b = p; break;
+                case 1: r = q; g = v; b = p; break;
+                case 2: r = p; g = v; b = t; break;
+                case 3: r = p; g = q; b = v; break;
+                case 4: r = t; g = p; b = v; break;
+                case 5: r = v; g = p; b = q; break;
+            }
+            const toHex = x => {
+                const val = Math.round(x * 255).toString(16);
+                return val.length === 1 ? '0' + val : val;
+            };
+            return `#${toHex(r)}${toHex(g)}${toHex(b)}`.toUpperCase();
         }
     };
 
@@ -5270,7 +5562,7 @@
             });
         }
 
-        const CURRENT_VERSION = '2.0.0'; // 👈 请确保这里与 HTML 标题一致
+        const CURRENT_VERSION = '2.0.1'; // 👈 请确保这里与 HTML 标题一致
         const STORAGE_KEY = 'mv_last_seen_version';
 
         // 读取本地存储的旧版本号
