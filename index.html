@@ -8536,27 +8536,23 @@
         }
 
         if (STATE.isPlaying) {
-            // --- 时间累加逻辑 ---
+            STATE.currentTime += delta;
 
-            // 情况 A: 正常播放且有音频 -> 视觉对齐音频 (Sync to Audio)
+            // 如果有音频在播放，我们只检测“人为跳转”
             if (!DOM.audio.paused && STATE.activeAudioClip) {
                 const clip = STATE.activeAudioClip;
-                // 计算音频当前的真实播放时间对应的工程时间
+                // 获取音频当前的真实时间
                 const rawVisualTime = DOM.audio.currentTime - (clip.trimOffset || 0);
                 const audioBasedTime = rawVisualTime + clip.startTime;
 
-                const timeDiff = Math.abs(STATE.currentTime - audioBasedTime);
+                // 计算视觉时间与音频时间的差距
+                const diff = Math.abs(STATE.currentTime - audioBasedTime);
 
-                // 如果误差太大(>0.5s)，直接瞬移纠正；否则平滑插值纠正
-                if (Math.abs(STATE.currentTime - audioBasedTime) > 0.5) {
+                // 🔥 核心修改：只有当误差超过 0.3秒 (说明发生了拖拽或卡顿) 时，才强制对齐
+                // 否则，完全忽略音频时钟的小数点波动，依靠 delta 只有物理平滑
+                if (diff > 0.3) {
                     STATE.currentTime = audioBasedTime;
-                } else {
-                    STATE.currentTime = THREE.MathUtils.lerp(STATE.currentTime, audioBasedTime, 0.5);
                 }
-            }
-            // 情况 B: 录制模式 或 纯MIDI无音频 -> 使用数学累加 (Sync to Delta)
-            else {
-                STATE.currentTime += delta;
             }
 
             if (STATE.isRecording) {
