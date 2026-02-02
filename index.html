@@ -1990,17 +1990,123 @@
             box-shadow: 0 1px 3px rgba(0,0,0,0.2) !important;
         }
 
-        /* --- I. 弹窗 --- */
+        /* 1. 弹窗容器：纯白卡片，去除脏感 */
         body.light-mode .modal-content,
         body.light-mode #context-menu {
-            background: #ffffff !important;
-            border: 1px solid #c7c7cc !important;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.2) !important;
+            background-color: #ffffff !important;
+            border: 1px solid #d1d1d6 !important;
+            /* 使用柔和的深色扩散阴影，增加浮起感 */
+            box-shadow: 0 20px 50px rgba(0,0,0,0.15), 0 0 0 1px rgba(0,0,0,0.05) !important;
+            color: #1d1d1f !important;
+            backdrop-filter: none !important; /* 移除模糊，保证锐利 */
+        }
+
+        /* 2. 标题修复 */
+        body.light-mode .modal-content h3 {
+            color: #000000 !important;
+            border-bottom: 1px solid #e5e5ea !important;
+            text-shadow: none !important; /* 去除发光 */
+        }
+
+        /* 标题中的 Logo 文字 (针对版本弹窗) */
+        body.light-mode .modal-content h3 span[style*="gradient"] {
+            /* 强制改为深灰色金属渐变 */
+            background: linear-gradient(180deg, #444 20%, #000 100%) !important;
+            -webkit-background-clip: text !important;
+            background-clip: text !important;
+            text-shadow: none !important;
+        }
+
+        /* 3. 输入框与下拉单：浅灰底色 */
+        body.light-mode .form-group input,
+        body.light-mode .form-group select,
+        body.light-mode #project-name-input {
+            background-color: #f2f2f7 !important; /* 苹果浅灰 */
+            border: 1px solid #d1d1d6 !important;
+            color: #1d1d1f !important;
+            box-shadow: inset 0 1px 2px rgba(0,0,0,0.03) !important; /* 极淡的内阴影 */
+        }
+
+        body.light-mode .form-group input:focus,
+        body.light-mode .form-group select:focus {
+            background-color: #ffffff !important; /* 聚焦变白 */
+            border-color: #007aff !important;
+            box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.15) !important;
+        }
+
+        /* 4. 标签文字 (Label) */
+        body.light-mode .form-group label,
+        body.light-mode p {
+            color: #636366 !important;
+            font-weight: 600 !important;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* 5. 版本更新列表修复 */
+        body.light-mode .modal-content ul {
+            color: #333 !important;
+        }
+        body.light-mode .modal-content li {
+            color: #1d1d1f !important;
+        }
+        /* 列表容器背景 */
+        body.light-mode .modal-content div[style*="overflow-y"] {
+            background-color: #f9f9f9 !important; /* 浅灰底 */
+            border: 1px solid #e5e5ea !important;
+        }
+        /* 列表内的小标题 */
+        body.light-mode .modal-content p[style*="font-weight: 700"] {
             color: #000 !important;
         }
-        body.light-mode .modal-content h3 {
+        /* 列表内的辅助说明 */
+        body.light-mode .modal-content ul li[style*="color: #888"] {
+            color: #666 !important;
+        }
+
+        /* 6. 视角参数 (Param Box) 特殊修复 */
+        body.light-mode .param-box {
+            background-color: #f2f2f7 !important;
+            border: 1px solid #d1d1d6 !important;
+            box-shadow: none !important;
+        }
+        body.light-mode .param-label {
+            color: #86868b !important;
+        }
+        body.light-mode .param-input {
+            color: #000000 !important;
+            text-shadow: none !important;
+            font-weight: 700 !important;
+        }
+        body.light-mode .param-box:focus-within {
+            background-color: #ffffff !important;
+            border-color: #007aff !important;
+            box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.15) !important;
+        }
+        body.light-mode .param-box:focus-within .param-label {
+            color: #007aff !important;
+        }
+
+        /* 7. 模型预览窗口 (Model Preview) */
+        body.light-mode #model-preview-modal .modal-content {
+            background-color: #ffffff !important;
+        }
+        body.light-mode .control-group label {
+            color: #666 !important;
+        }
+        /* 预览窗口右侧控制栏 */
+        body.light-mode #model-preview-modal .modal-content > div:last-child {
+            background-color: #f9f9f9 !important;
+            border-left: 1px solid #e5e5ea !important;
+        }
+        /* 标题栏 */
+        body.light-mode #model-preview-modal .modal-content > div:first-child {
+            background-color: #f2f2f7 !important;
+            border-bottom: 1px solid #d1d1d6 !important;
+        }
+        body.light-mode #model-preview-modal h3 {
             color: #000 !important;
-            border-bottom: 1px solid #eee;
+            border: none !important;
         }
 
     </style>
