@@ -1764,7 +1764,7 @@
                 <span class="logo-text title-main">MIDI</span>
                 <span class="logo-text title-sub">Visualizer</span>
             </div>
-            <span class="version-tag">v2.1.0</span>
+            <span class="version-tag">v2.1.1</span>
         </div>
 
         <div class="toolbar-separator"></div>
@@ -1809,7 +1809,6 @@
         </button>
 
         <button class="btn btn-accent" id="btn-highlight-color" style="display: flex; align-items: center; gap: 6px;">
-            <div id="hl-color-preview" style="width: 12px; height: 12px; background: #fff; border-radius: 2px; border: 1px solid rgba(255,255,255,0.5);"></div>
             高光样式
         </button>
 
@@ -2007,6 +2006,14 @@
     <div class="modal-content" style="background: #2a2a2a; padding: 20px; border-radius: 8px; width: 320px; border: 1px solid #444; box-shadow: 0 0 20px rgba(0,0,0,0.8);">
         <h3 style="margin-top:0; border-bottom:1px solid #444; padding-bottom:10px;">背景参数设置</h3>
 
+        <div class="form-group" style="background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px; margin-bottom: 15px;">
+            <label style="margin-bottom: 8px; display:block;">背景主题 (Background Theme)</label>
+            <div style="display: flex; gap: 10px;">
+                <button class="btn btn-primary" id="bg-mode-dark" style="flex: 1;">黑色 (默认)</button>
+                <button class="btn" id="bg-mode-white" style="flex: 1; background: #e5e5e5; color: #333; text-shadow:none;">白色</button>
+            </div>
+        </div>
+
         <div class="form-group">
             <label>不透明度 (Opacity): <span id="val-opacity">1.0</span></label>
             <input type="range" id="bg-opacity" min="0" max="1" step="0.05" value="0.6" style="width:100%">
@@ -2170,22 +2177,30 @@
                 text-shadow: none;   /* 去掉可能的文字阴影 */
                 line-height: 1.2;
             ">
-                v2.1.0
+                v2.1.1
             </span>
         </h3>
 
         <div style="height: 250px; overflow-y: auto; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px; margin-bottom: 20px;">
             <p style="color: #fff; font-weight: 700; font-size: 13px; margin-top: 0; border-left: 3px solid #ff453a; padding-left: 8px;">
-                2026-02-05 v2.1.0 (Recorder & Workflow Update)
+                2026-02-02 v2.1.1 (Performance Hotfix)
             </p>
             <ul style="padding-left: 20px; color: #ddd; line-height: 1.6; margin-bottom: 20px;">
+                <li>优化：移除全局相机阻尼 (Damping)，彻底解决播放时的画面抽动与掉帧感，实现丝滑移动。</li>
+                <li>优化：模型预览窗口关闭阻尼，提升自定义模型预览时的操作流畅度。</li>
+            </ul>
+
+            <div style="height:1px; background:rgba(255,255,255,0.1); margin: 15px 0;"></div>
+
+            <p style="color: #aaa; font-size: 12px; margin-top: 0;">
+                2026-02-05 v2.1.0
+            </p>
+            <ul style="padding-left: 20px; color: #888; line-height: 1.6;">
                 <li>新增：录音功能，按R录制，选择轨道激活录音</li>
                 <li>新增："Realtime Fade" 模式，开启后，音符将随播放进度平滑显现。</li>
                 <li>新增：新建轨道按钮</li>
                 <li>优化：支持 Delete/Backspace 键删除选中的 Clip 事件</li>
             </ul>
-
-            <div style="height:1px; background:rgba(255,255,255,0.1); margin: 15px 0;"></div>
 
             <p style="color: #aaa; font-size: 12px; margin-top: 0;">
                 2026-02-02 v2.0.1
@@ -2492,41 +2507,43 @@
 
         const vizSection = document.getElementById('visualizer-section');
 
+        // 🔥【修复】读取当前的主题记忆，以便决定关闭星星后恢复什么颜色
+        const currentTheme = localStorage.getItem('mv_bg_theme_mode') || 'dark';
+
         if (visible) {
+            // === 开启星星 ===
             // 如果用户没有上传自定义背景，显示星空板子
             if (!currentBgType) {
                 if (bgMaterial && window.starfieldBgTexture) {
                     bgMaterial.uniforms.tMap.value = window.starfieldBgTexture;
-
-                    // 重置参数
                     bgMaterial.uniforms.uOpacity.value = 1.0;
                     bgMaterial.uniforms.uBrightness.value = 0.0;
                     bgMaterial.uniforms.uContrast.value = 1.0;
-
-                    // --- 🔥 修复椭圆变形的关键 ---
-                    // 1. 告诉系统，当前贴图的长宽比是 1:1 (正方形)
                     bgImageAspect = 1.0;
-
-                    // 2. 强制设为 'cover' 模式 (保持比例铺满)
                     BG_STATE.fit = 'cover';
-                    document.getElementById('bg-fit').value = 'cover'; // 同步UI
-
-                    // 3. 立即触发一次 UV 计算，修正拉伸
+                    if(document.getElementById('bg-fit')) document.getElementById('bg-fit').value = 'cover';
                     updateBackgroundUV();
 
-                    // 显示
                     if (bgMesh) bgMesh.visible = true;
+
+                    // 🌟 开启星空时，背景强制全黑以融合星星
                     if (vizSection) vizSection.style.background = "#000000";
                 }
             } else {
-                // 自定义背景
                 if (bgMesh) bgMesh.visible = true;
             }
         } else {
-            // 关闭
+            // === 关闭星星 ===
             if (!currentBgType) {
                 if (bgMesh) bgMesh.visible = false;
-                if (vizSection) vizSection.style.background = "#000000";
+
+                // 🔥【修复】关闭星星时，根据当前主题恢复背景，而不是强制变黑
+                if (currentTheme === 'white') {
+                    if (vizSection) vizSection.style.background = "#ffffff";
+                } else {
+                    // 默认深色渐变
+                    if (vizSection) vizSection.style.background = "#000000";
+                }
             }
         }
     }
@@ -5186,8 +5203,8 @@
 
     function initPreviewSystem() {
         const container = document.getElementById('preview-canvas-container');
-        const width = container.clientWidth;
-        const height = container.clientHeight;
+        const width = container.clientWidth || 800;
+        const height = container.clientHeight || 600;
 
         // 1. 初始化独立场景
         previewScene = new THREE.Scene();
@@ -5220,7 +5237,7 @@
 
         // 5. 简单的轨道控制
         previewControls = new OrbitControls(previewCamera, previewRenderer.domElement);
-        previewControls.enableDamping = true;
+        previewControls.enableDamping = false;
 
         // 6. 绑定滑块事件
         ['rot-x', 'rot-y', 'rot-z'].forEach(id => {
@@ -5519,12 +5536,12 @@
         renderer.outputEncoding = THREE.sRGBEncoding;
         renderer.setClearColor(0x000000, 0);
         renderer.setSize(width, height);
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+        renderer.setPixelRatio(1);
         wrapper.appendChild(renderer.domElement);
 
         controls = new OrbitControls(camera, renderer.domElement);
-        controls.enableDamping = true;
-        controls.dampingFactor = 0.05;
+        controls.enableDamping = false;
+        // controls.dampingFactor = 0.05;
         controls.target.set(0, 0, 0);
 
         wrapper.addEventListener('dblclick', (e) => {
@@ -5583,9 +5600,9 @@
 
                 // 边界检查
                 if (centerUv.x < 0.0 || centerUv.x > 1.0 || centerUv.y < 0.0 || centerUv.y > 1.0) {
-                    gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
-                    return;
-                }
+    gl_FragColor = vec4(0.0, 0.0, 0.0, 0.0); // 🔥 改为 0.0，变成完全透明
+    return;
+}
 
                 // 直接采样 (因为模糊已经在离屏渲染里做完了)
                 vec4 color = texture2D(tMap, centerUv);
@@ -6215,6 +6232,9 @@
             texture.magFilter = THREE.LinearFilter;
             texture.generateMipmaps = false;
 
+            texture.wrapS = THREE.ClampToEdgeWrapping;
+            texture.wrapT = THREE.ClampToEdgeWrapping;
+
             bgTexture = texture;
             bgImageAspect = aspect;
 
@@ -6307,7 +6327,7 @@
             });
         }
 
-        const CURRENT_VERSION = '2.1.0'; // 👈 请确保这里与 HTML 标题一致
+        const CURRENT_VERSION = '2.1.1'; // 👈 请确保这里与 HTML 标题一致
         const STORAGE_KEY = 'mv_last_seen_version';
 
         // 读取本地存储的旧版本号
@@ -6523,6 +6543,112 @@
         document.getElementById('closeBgSettingsBtn').addEventListener('click', () => {
             bgModal.style.display = 'none';
         });
+
+        // --- 背景模式切换逻辑 ---
+        // --- 背景模式切换逻辑 (带记忆功能) ---
+        const btnDark = document.getElementById('bg-mode-dark');
+        const btnWhite = document.getElementById('bg-mode-white');
+        const vizSection = document.getElementById('visualizer-section');
+        const STORAGE_KEY_THEME = 'mv_bg_theme_mode'; // 本地存储的 Key
+
+        if (btnDark && btnWhite) {
+
+            function applyThemeMode(mode) {
+                const starToggle = document.getElementById('starfieldToggle');
+                const vizSection = document.getElementById('visualizer-section');
+                const bgMesh = window.bgMesh || (scene && scene.children.find(c => c.isMesh && c.geometry.type === 'PlaneGeometry')); // 尝试获取背景Mesh
+
+                // 1. 存入记忆
+                localStorage.setItem('mv_bg_theme_mode', mode);
+
+                if (mode === 'white') {
+                    // === 切换到纯白模式 ===
+
+                    // 记忆星星状态
+                    if (!document.getElementById('bg-mode-white').classList.contains('btn-primary')) {
+                        if (starToggle) {
+                            localStorage.setItem('mv_restore_stars', starToggle.checked);
+                        }
+                    }
+
+                    // 更新按钮样式
+                    document.getElementById('bg-mode-white').classList.add('btn-primary');
+                    document.getElementById('bg-mode-white').style.border = "2px solid var(--accent-blue)";
+                    document.getElementById('bg-mode-dark').classList.remove('btn-primary');
+
+                    // 关星星
+                    if (starToggle && starToggle.checked) {
+                        starToggle.checked = false;
+                        setStarfieldState(false);
+                    }
+
+                    // 🔥 核心修复：去除黑色内阴影，并调整顶部边框颜色 🔥
+                    if (vizSection) {
+                        vizSection.style.background = "#ffffff";
+                        vizSection.style.boxShadow = "none"; // 移除导致黑边的内阴影
+                        vizSection.style.borderTop = "1px solid #e0e0e0"; // 边框改为浅灰色
+                    }
+
+                    // 确保雾也是白色的，防止远处变黑
+                    if (scene && scene.fog) {
+                        scene.fog.color.set(0xffffff);
+                    }
+
+                    // 隐藏背景图（如果有）
+                    if (bgMesh) bgMesh.visible = false;
+
+                } else {
+                    // === 切换到深色模式 (默认) ===
+                    document.getElementById('bg-mode-dark').classList.add('btn-primary');
+                    document.getElementById('bg-mode-white').classList.remove('btn-primary');
+                    document.getElementById('bg-mode-white').style.border = "none";
+
+                    // 恢复深色背景和阴影
+                    if (vizSection) {
+                        vizSection.style.background = "#000000"; // 🔥 改为纯黑
+                        // 🔥 恢复深色模式的内阴影
+                        vizSection.style.boxShadow = "inset 0 20px 50px -10px rgba(0,0,0,0.9)";
+                        vizSection.style.borderTop = "1px solid rgba(255, 255, 255, 0.05)";
+                    }
+
+                    // 恢复黑色雾
+                    if (scene && scene.fog) {
+                        scene.fog.color.set(0x000000);
+                    }
+
+                    // 恢复背景内容
+                    if (currentBgType && bgMesh) {
+                        bgMesh.visible = true;
+                    } else {
+                        const shouldRestore = localStorage.getItem('mv_restore_stars') === 'true';
+                        if (shouldRestore && starToggle) {
+                            starToggle.checked = true;
+                            setStarfieldState(true);
+                        }
+                    }
+                }
+            }
+
+            // 绑定点击事件，并保存到 localStorage
+            btnDark.addEventListener('click', () => {
+                applyThemeMode('dark');
+                localStorage.setItem(STORAGE_KEY_THEME, 'dark');
+            });
+
+            btnWhite.addEventListener('click', () => {
+                applyThemeMode('white');
+                localStorage.setItem(STORAGE_KEY_THEME, 'white');
+            });
+
+            // --- 🔥 初始化：读取记忆并恢复 ---
+            const savedMode = localStorage.getItem(STORAGE_KEY_THEME);
+            if (savedMode === 'white') {
+                // 使用 setTimeout 延时执行，以覆盖页面底部默认的星星初始化逻辑(100ms)
+                setTimeout(() => {
+                    applyThemeMode('white');
+                }, 200);
+            }
+        }
 
         // ... 在 initController 内 ...
 
@@ -8271,27 +8397,32 @@
     // --- 播放控制 ---
     function togglePlay() {
         if (STATE.isPlaying) {
-            STATE.isPlaying = false; // 1. 先标记为停止状态
+            // === 暂停状态 ===
+            STATE.isPlaying = false;
 
-            // 🔥 新增：如果当前正在录制，则自动结束录制
-            // 注意：必须放在 STATE.isPlaying = false 之后调用，防止死循环
-            if (STATE.isRecording) {
-                toggleRecord();
-            }
+            // 1. 恢复阻尼，让鼠标拖拽手感更好
+            if (controls) controls.enableDamping = true;
+
+            if (STATE.isRecording) toggleRecord();
 
             DOM.audio.pause();
             if (bgVideoElement) bgVideoElement.pause();
             DOM.playBtn.innerText = "PLAY (Space)";
-            DOM.playBtn.classList.remove('btn-primary'); // 去掉高亮
+            DOM.playBtn.classList.remove('btn-primary');
         } else {
+            // === 播放状态 ===
             STATE.isPlaying = true;
             STATE.lastFrameTime = performance.now();
             DOM.playBtn.innerText = "PAUSE (Space)";
             DOM.playBtn.classList.add('btn-primary');
 
-            // 尝试播放音频
+            // 2. 🔥【关键修复】播放时强制关闭阻尼，消除抖动
+            if (controls) {
+                controls.enableDamping = false;
+                controls.update(); // 立即刷新一次状态
+            }
+
             syncAudio();
-            // 🔥 同步播放背景视频
             if (bgVideoElement) {
                 bgVideoElement.play().catch(e => console.log("Bg video play blocked"));
             }
@@ -8610,11 +8741,20 @@
             syncAudio();
 
             // 移动 3D 相机
-            const targetX = STATE.currentTime * STATE.playbackSpeed;
-            const camMove = targetX - cameraTargetX;
-            camera.position.x += camMove;
-            controls.target.x += camMove;
-            cameraTargetX = targetX;
+            const idealTargetX = STATE.currentTime * STATE.playbackSpeed;
+
+            // 2. 获取当前相机相对于 Target 的偏移量 (保留用户的旋转/缩放状态)
+            // 注意：这里只取 X 轴的相对距离是不够的，OrbitControls 的核心是保持相对矢量不变
+            const relativeOffset = camera.position.x - controls.target.x;
+
+            // 3. 强制对齐 Target 到绝对时间位置
+            controls.target.x = idealTargetX;
+
+            // 4. 强制对齐 Camera，保持与 Target 的相对距离不变
+            camera.position.x = idealTargetX + relativeOffset;
+
+            // 5. 更新追踪器，防止星空背景计算出错
+            cameraTargetX = idealTargetX;
         }
 
         // --- Shader Uniforms 更新 ---
