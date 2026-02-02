@@ -1990,22 +1990,22 @@
             box-shadow: 0 1px 3px rgba(0,0,0,0.2) !important;
         }
 
-        /* 1. 弹窗容器：纯白卡片，去除脏感 */
+        /* 1. 弹窗容器：纯白卡片 + 深色弥散阴影 */
         body.light-mode .modal-content,
         body.light-mode #context-menu {
-            background-color: #ffffff !important;
-            border: 1px solid #d1d1d6 !important;
-            /* 使用柔和的深色扩散阴影，增加浮起感 */
-            box-shadow: 0 20px 50px rgba(0,0,0,0.15), 0 0 0 1px rgba(0,0,0,0.05) !important;
+            background-color: #ffffff !important; /* 卡片本身是纯白 */
+            border: 1px solid #d1d1d6 !important; /* 浅灰边框 */
+            /* 关键：这个大阴影让白色弹窗不会混入背景 */
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15) !important;
             color: #1d1d1f !important;
-            backdrop-filter: none !important; /* 移除模糊，保证锐利 */
+            border-radius: 12px !important;
         }
 
-        /* 2. 标题修复 */
+        /* 3. 弹窗标题：纯黑字 + 灰色分割线 */
         body.light-mode .modal-content h3 {
             color: #000000 !important;
-            border-bottom: 1px solid #e5e5ea !important;
-            text-shadow: none !important; /* 去除发光 */
+            border-bottom: 1px solid #e5e5ea !important; /* 分割线 */
+            text-shadow: none !important;
         }
 
         /* 标题中的 Logo 文字 (针对版本弹窗) */
@@ -2017,21 +2017,22 @@
             text-shadow: none !important;
         }
 
-        /* 3. 输入框与下拉单：浅灰底色 */
+        /* 2. 输入框 & 下拉菜单：浅灰底色 (区分于弹窗的白) */
         body.light-mode .form-group input,
         body.light-mode .form-group select,
         body.light-mode #project-name-input {
-            background-color: #f2f2f7 !important; /* 苹果浅灰 */
+            background-color: #f5f5f7 !important; /* 🔥 核心改动：浅灰底 */
             border: 1px solid #d1d1d6 !important;
-            color: #1d1d1f !important;
-            box-shadow: inset 0 1px 2px rgba(0,0,0,0.03) !important; /* 极淡的内阴影 */
+            color: #1d1d1f !important; /* 深黑文字 */
+            box-shadow: none !important;
         }
 
+        /* 选中输入框时：变回纯白 + 蓝框 (交互反馈) */
         body.light-mode .form-group input:focus,
         body.light-mode .form-group select:focus {
-            background-color: #ffffff !important; /* 聚焦变白 */
+            background-color: #ffffff !important;
             border-color: #007aff !important;
-            box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.15) !important;
+            box-shadow: 0 0 0 3px rgba(0,122,255,0.15) !important;
         }
 
         /* 4. 标签文字 (Label) */
@@ -2050,18 +2051,13 @@
         body.light-mode .modal-content li {
             color: #1d1d1f !important;
         }
-        /* 列表容器背景 */
+        /* 4. 版本更新列表 (如果有的话) */
         body.light-mode .modal-content div[style*="overflow-y"] {
-            background-color: #f9f9f9 !important; /* 浅灰底 */
+            background-color: #f9f9fc !important; /* 列表区域给一个极淡的灰底 */
             border: 1px solid #e5e5ea !important;
         }
-        /* 列表内的小标题 */
-        body.light-mode .modal-content p[style*="font-weight: 700"] {
-            color: #000 !important;
-        }
-        /* 列表内的辅助说明 */
-        body.light-mode .modal-content ul li[style*="color: #888"] {
-            color: #666 !important;
+        body.light-mode .modal-content li {
+            color: #333 !important;
         }
 
         /* 6. 视角参数 (Param Box) 特殊修复 */
