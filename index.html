@@ -8845,9 +8845,6 @@
             // === 暂停状态 ===
             STATE.isPlaying = false;
 
-            // 1. 恢复阻尼，让鼠标拖拽手感更好
-            if (controls) controls.enableDamping = true;
-
             if (STATE.isRecording) toggleRecord();
 
             DOM.audio.pause();
@@ -9188,17 +9185,22 @@
             // 移动 3D 相机
             const idealTargetX = STATE.currentTime * STATE.playbackSpeed;
 
-            // 2. 获取当前相机相对于 Target 的偏移量 (保留用户的旋转/缩放状态)
-            // 注意：这里只取 X 轴的相对距离是不够的，OrbitControls 的核心是保持相对矢量不变
-            const relativeOffset = camera.position.x - controls.target.x;
+            // 🔥 1. 计算用户当前的平移偏移量 (User Pan Offset)
+            // 逻辑：当前的目标位置 - 上一帧记录的播放头位置 = 用户手动拖拽产生的额外偏移
+            // 注意：首次运行时 cameraTargetX 可能未定义，需做容错
+            const lastIdealX = (typeof cameraTargetX !== 'undefined') ? cameraTargetX : idealTargetX;
+            const userPanOffset = controls.target.x - lastIdealX;
 
-            // 3. 强制对齐 Target 到绝对时间位置
-            controls.target.x = idealTargetX;
+            // 🔥 2. 获取当前相机相对于 Target 的距离 (保留 Zoom/Rotation 状态)
+            const relativeCamOffset = camera.position.x - controls.target.x;
 
-            // 4. 强制对齐 Camera，保持与 Target 的相对距离不变
-            camera.position.x = idealTargetX + relativeOffset;
+            // 🔥 3. 更新 Target：新的播放头位置 + 必须保留的用户偏移
+            controls.target.x = idealTargetX + userPanOffset;
 
-            // 5. 更新追踪器，防止星空背景计算出错
+            // 🔥 4. 更新 Camera：跟随 Target 移动，同时保持相对距离
+            camera.position.x = controls.target.x + relativeCamOffset;
+
+            // 5. 更新追踪器 (记录这一帧的“纯”播放头位置，供下一帧计算偏移用)
             cameraTargetX = idealTargetX;
         }
 
