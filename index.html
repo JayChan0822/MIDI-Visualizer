@@ -1658,6 +1658,351 @@
             background: #fff !important; /* 激活时中心变白 */
         }
 
+        /* ========================================= */
+        /* 🔥 终极版 v3：Light Mode (实体质感 & 逻辑修正) */
+        /* ========================================= */
+
+        body.light-mode {
+            /* 1. 背景加深为“白金灰”，彻底告别刺眼 */
+            --bg-color: #dcdce0;
+            --text-main: #000000;
+            --text-muted: #555555;
+
+            /* 玻璃面板：使用半透明的乳白色 */
+            --glass-panel: rgba(255, 255, 255, 0.9);
+            --glass-header: #f2f2f7; /* 工具栏底色微灰 */
+            --glass-border: rgba(0, 0, 0, 0.1);
+
+            /* 强制覆盖背景 */
+            background-image: none !important;
+            background-color: var(--bg-color) !important;
+        }
+
+        /* --- A. 顶部 Logo --- */
+        body.light-mode .logo-text {
+            /* 深灰色金属渐变 */
+            background: linear-gradient(180deg, #444 20%, #000 100%) !important;
+            -webkit-background-clip: text !important;
+            background-clip: text !important;
+            text-shadow: none !important;
+        }
+        body.light-mode .title-sub {
+            color: #666 !important;
+        }
+
+        /* 1. 默认按钮：纯白实体 */
+        body.light-mode .btn {
+            background: #ffffff !important;
+            border: 1px solid #c7c7cc !important;
+            color: #1c1c1e !important;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+            font-weight: 600;
+        }
+        body.light-mode .btn:hover {
+            background: #f2f2f7 !important;
+            border-color: #8e8e93 !important;
+            transform: translateY(-1px);
+        }
+        body.light-mode .btn:active {
+            transform: translateY(0);
+            box-shadow: none;
+        }
+
+        /* 2. 核心操作 (导出视频) - 保持渐变，因为它是最重要的 */
+        body.light-mode .btn-primary {
+            background: linear-gradient(135deg, #007aff 0%, #5856d6 100%) !important;
+            color: #fff !important;
+            border: none !important;
+            box-shadow: 0 4px 10px rgba(0, 122, 255, 0.3) !important;
+        }
+        body.light-mode .btn-primary:hover {
+            filter: brightness(1.1);
+            transform: translateY(-1px);
+        }
+
+        /* 3. 蓝色功能键 (保存/读取) - 极淡蓝底 + 深蓝字 */
+        body.light-mode .btn-blue {
+            background: rgba(0, 122, 255, 0.1) !important; /* 淡蓝果冻底 */
+            border-color: rgba(0, 122, 255, 0.3) !important;
+            color: #007aff !important; /* 苹果蓝文字 */
+        }
+        body.light-mode .btn-blue:hover {
+            background: rgba(0, 122, 255, 0.2) !important;
+            border-color: #007aff !important;
+        }
+
+        /* 4. 红色危险键 (停止/清除/录音) - 极淡红底 + 深红字 */
+        body.light-mode .btn-red {
+            background: rgba(255, 59, 48, 0.1) !important; /* 淡红果冻底 */
+            border-color: rgba(255, 59, 48, 0.3) !important;
+            color: #d70015 !important; /* 深红色文字，保证对比度 */
+        }
+        body.light-mode .btn-red:hover {
+            background: rgba(255, 59, 48, 0.2) !important;
+            border-color: #ff3b30 !important;
+        }
+
+        /* 5. 播放按钮 (Play) - 特殊处理绿色 */
+        /* 因为你的 HTML 里 Play 按钮用了内联样式，我们需要用 ID 强制覆盖 */
+        body.light-mode #playBtn {
+            background: rgba(52, 199, 89, 0.15) !important; /* 淡绿果冻底 */
+            border-color: rgba(52, 199, 89, 0.4) !important;
+            color: #008f28 !important; /* 深绿色文字 */
+        }
+        body.light-mode #playBtn:hover {
+            background: rgba(52, 199, 89, 0.25) !important;
+            transform: translateY(-1px);
+        }
+
+        /* 6. 紫色按钮 (Accent) */
+        body.light-mode .btn-accent {
+            background: rgba(175, 82, 222, 0.1) !important;
+            border-color: rgba(175, 82, 222, 0.3) !important;
+            color: #af52de !important;
+        }
+
+        /* --- C. 工具栏 (Toolbar) --- */
+        body.light-mode #toolbar {
+            /* 浅灰底色，衬托白色按钮 */
+            background: #f2f2f7 !important;
+            border-bottom: 1px solid #d1d1d6 !important;
+        }
+
+        /* --- D. 轨道头 (逻辑修正) --- */
+        body.light-mode #track-headers,
+        body.light-mode #ruler-header-spacer {
+            background: #e5e5ea !important; /* 轨道槽颜色 */
+            border-right: 1px solid #d1d1d6 !important;
+        }
+
+        /* 🔥 逻辑反转：未选中 = 纯白 (默认) */
+        body.light-mode .track-header {
+            background: #ffffff !important;
+            border-bottom: 1px solid #e5e5ea !important;
+            border-top: none !important;
+            /* 给未选中的轨道加一个微弱的右边框，增加立体感 */
+            box-shadow: inset -3px 0 0 transparent;
+            transition: background 0.1s;
+        }
+        body.light-mode .track-header:hover {
+            background: #fafafa !important;
+        }
+
+        /* 🔥 逻辑反转：选中 = 银灰/淡蓝 (激活) */
+        body.light-mode .track-header.selected {
+            background: #e4e5f0 !important; /* 明显的选中色 */
+            /* 蓝色左侧指示条 */
+            box-shadow: inset 4px 0 0 #007aff !important;
+            z-index: 2;
+        }
+
+        /* 轨道名称文字 */
+        body.light-mode .track-name {
+            color: #1c1c1e !important;
+            font-weight: 600 !important;
+            text-shadow: none !important;
+        }
+
+        /* M/S/R 小按钮 (增强辨识度) */
+        body.light-mode .btn-sm {
+            background: #f2f2f7; /* 默认浅灰 */
+            border: 1px solid #d1d1d6;
+            color: #666;
+            box-shadow: 0 1px 1px rgba(0,0,0,0.05);
+        }
+        body.light-mode .btn-sm:hover {
+            background: #ffffff;
+            border-color: #999;
+            color: #000;
+        }
+
+        /* --- E. 中间时间轴 (Timeline) --- */
+        body.light-mode #timeline-lanes {
+            /* 背景更深，突出轨道 */
+            background-color: #dcdce0 !important;
+            /* 网格点加深 */
+            background-image: radial-gradient(#999 1px, transparent 1px) !important;
+        }
+
+        /* 轨道行：柔光白 */
+        body.light-mode .track-lane {
+            background: #fafafa !important; /* 不再是刺眼的纯白 */
+            border-bottom: 1px solid #d1d1d6 !important;
+            border-top: none !important;
+        }
+        body.light-mode .track-lane:hover {
+            background: #ffffff !important;
+        }
+
+        /* 选中框 */
+        body.light-mode .selection-box {
+            background: rgba(0, 122, 255, 0.1);
+            border: 1px solid rgba(0, 122, 255, 0.4);
+        }
+
+        /* --- F. 标尺 (Ruler) --- */
+        body.light-mode #ruler-container {
+            background: #f2f2f7 !important;
+            border-bottom: 1px solid #d1d1d6 !important;
+        }
+        body.light-mode #bar-ruler,
+        body.light-mode #time-ruler {
+            color: #666 !important;
+            border-bottom: 1px solid rgba(0,0,0,0.05) !important;
+        }
+        body.light-mode .ruler-mark {
+            border-left: 1px solid #c7c7cc !important;
+        }
+        body.light-mode .ruler-mark.major {
+            color: #000 !important;
+            font-weight: 700 !important;
+            border-left-color: #888 !important;
+        }
+
+        /* --- G. 悬浮面板 HUD (完美卡片修复版) --- */
+
+        /* 1. 外层容器：不论折叠展开，都是实体卡片 */
+        body.light-mode #shortcut-overlay,
+        body.light-mode #viz-overlay {
+            /* 核心：强制白底，不再透明 */
+            background-color: #ffffff !important;
+
+            /* 实体边框，让它从背景中独立出来 */
+            border: 1px solid #c7c7cc !important;
+
+            /* 较深的投影，增加悬浮层次感 */
+            box-shadow: 0 8px 30px rgba(0,0,0,0.15) !important;
+
+            color: #1d1d1f !important;
+            border-radius: 10px !important;
+
+            /* 移除内联样式可能的干扰 */
+            backdrop-filter: none !important;
+        }
+
+        /* 2. 标题栏：浅灰背景，形成区分 */
+        body.light-mode #shortcut-header,
+        body.light-mode #viz-header {
+            color: #000000 !important;
+            font-weight: 700 !important;
+
+            /* 浅灰色背景，像 macOS 窗口标题栏 */
+            background-color: #f2f2f7 !important;
+
+            border-bottom: 1px solid #e5e5ea !important;
+
+            /* 修正边距，让背景铺满顶部圆角 */
+            margin: -14px -14px 10px -14px !important;
+            padding: 10px 14px !important;
+            border-radius: 10px 10px 0 0 !important;
+        }
+
+        /* 3. 内容区域文字修复 */
+        body.light-mode #shortcut-content,
+        body.light-mode #viz-content {
+            /* 稍微增加一点底部内边距，更美观 */
+            padding-bottom: 4px;
+        }
+
+        /* 通用文字变深灰 */
+        body.light-mode #shortcut-content span,
+        body.light-mode #viz-content span {
+            color: #1d1d1f;
+            text-shadow: none !important;
+        }
+
+        /* 左侧说明标签 (Label) -> 中灰 */
+        body.light-mode span[style*="color:#aaa"],
+        body.light-mode span[style*="color:#888"] {
+            color: #6e6e73 !important;
+            font-weight: 500 !important;
+        }
+
+        /* --- 4. 快捷键高亮色修正 (深色化适配白底) --- */
+
+        /* 绿色 (Space / S / M) */
+        body.light-mode span[style*="color:#30d158"],
+        body.light-mode span[style*="color:#30D158"] {
+            color: #008f28 !important; /* 深绿 */
+            background: rgba(0, 143, 40, 0.1); /* 增加淡淡的背景块 */
+            padding: 2px 4px;
+            border-radius: 4px;
+        }
+
+        /* 红色 (Del) */
+        body.light-mode span[style*="color:#ff453a"],
+        body.light-mode span[style*="color:#ff6b6b"] {
+            color: #d70015 !important; /* 深红 */
+        }
+
+        /* 蓝色 (Ctrl+Z) */
+        body.light-mode span[style*="color:#0a84ff"],
+        body.light-mode span[style*="color:#5e5ce6"] {
+            color: #0062cc !important; /* 深蓝 */
+        }
+
+        /* 黄色 (Save) */
+        body.light-mode span[style*="color:#ffd60a"] {
+            color: #b36b00 !important; /* 深琥珀色 */
+        }
+
+        /* 紫色 (View) */
+        body.light-mode span[style*="color:#bf5af2"] {
+            color: #9c27b0 !important; /* 深紫 */
+        }
+
+        /* 数值高亮 */
+        body.light-mode span[style*="color:#fff"] {
+            color: #000000 !important;
+            font-weight: 800;
+        }
+
+        /* --- H. 底部控制栏 --- */
+        body.light-mode #bottom-controls {
+            background: #f2f2f7 !important;
+            border-top: 1px solid #d1d1d6 !important;
+        }
+        body.light-mode .slider-group {
+            color: #333 !important;
+        }
+        body.light-mode .slider-group span[style*="color:#fff"] {
+            color: #007aff !important;
+        }
+
+        /* 输入控件实体化 */
+        body.light-mode select,
+        body.light-mode input[type="text"],
+        body.light-mode input[type="number"] {
+            background-color: #ffffff !important;
+            color: #000 !important;
+            border: 1px solid #c7c7cc !important;
+            box-shadow: inset 0 1px 2px rgba(0,0,0,0.05) !important;
+        }
+
+        /* 滑块 */
+        body.light-mode input[type=range]::-webkit-slider-runnable-track {
+            background: #d1d1d6 !important;
+            border: none !important;
+        }
+        body.light-mode input[type=range]::-webkit-slider-thumb {
+            background: #ffffff !important;
+            border: 1px solid #888 !important;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2) !important;
+        }
+
+        /* --- I. 弹窗 --- */
+        body.light-mode .modal-content,
+        body.light-mode #context-menu {
+            background: #ffffff !important;
+            border: 1px solid #c7c7cc !important;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.2) !important;
+            color: #000 !important;
+        }
+        body.light-mode .modal-content h3 {
+            color: #000 !important;
+            border-bottom: 1px solid #eee;
+        }
+
     </style>
 
     <script type="importmap">
@@ -1764,7 +2109,7 @@
                 <span class="logo-text title-main">MIDI</span>
                 <span class="logo-text title-sub">Visualizer</span>
             </div>
-            <span class="version-tag">v2.1.1</span>
+            <span class="version-tag">v2.2.0</span>
         </div>
 
         <div class="toolbar-separator"></div>
@@ -2177,13 +2522,13 @@
                 text-shadow: none;   /* 去掉可能的文字阴影 */
                 line-height: 1.2;
             ">
-                v2.1.1
+                v2.2.0
             </span>
         </h3>
 
         <div style="height: 250px; overflow-y: auto; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px; margin-bottom: 20px;">
             <p style="color: #fff; font-weight: 700; font-size: 13px; margin-top: 0; border-left: 3px solid #ff453a; padding-left: 8px;">
-                2026-02-02 v2.1.1 (Performance Hotfix)
+                2026-02-02 v2.2.0 (Performance Hotfix)
             </p>
             <ul style="padding-left: 20px; color: #ddd; line-height: 1.6; margin-bottom: 20px;">
                 <li>新增：白色背景</li>
@@ -6328,7 +6673,7 @@
             });
         }
 
-        const CURRENT_VERSION = '2.1.1'; // 👈 请确保这里与 HTML 标题一致
+        const CURRENT_VERSION = '2.2.0'; // 👈 请确保这里与 HTML 标题一致
         const STORAGE_KEY = 'mv_last_seen_version';
 
         // 读取本地存储的旧版本号
@@ -6557,13 +6902,16 @@
             function applyThemeMode(mode) {
                 const starToggle = document.getElementById('starfieldToggle');
                 const vizSection = document.getElementById('visualizer-section');
-                const bgMesh = window.bgMesh || (scene && scene.children.find(c => c.isMesh && c.geometry.type === 'PlaneGeometry')); // 尝试获取背景Mesh
+                const bgMesh = window.bgMesh || (scene && scene.children.find(c => c.isMesh && c.geometry.type === 'PlaneGeometry'));
 
                 // 1. 存入记忆
                 localStorage.setItem('mv_bg_theme_mode', mode);
 
                 if (mode === 'white') {
-                    // === 切换到纯白模式 ===
+                    // === 切换到纯白模式 (Light Mode) ===
+
+                    // 🔥 核心修改：给 Body 添加 light-mode 类，触发 CSS 变量反转
+                    document.body.classList.add('light-mode');
 
                     // 记忆星星状态
                     if (!document.getElementById('bg-mode-white').classList.contains('btn-primary')) {
@@ -6574,6 +6922,7 @@
 
                     // 更新按钮样式
                     document.getElementById('bg-mode-white').classList.add('btn-primary');
+                    // 浅色模式下，选中边框用深一点的颜色
                     document.getElementById('bg-mode-white').style.border = "2px solid var(--accent-blue)";
                     document.getElementById('bg-mode-dark').classList.remove('btn-primary');
 
@@ -6583,31 +6932,34 @@
                         setStarfieldState(false);
                     }
 
-                    // 🔥 核心修复：去除黑色内阴影，并调整顶部边框颜色 🔥
+                    // 更新 3D 容器背景
                     if (vizSection) {
                         vizSection.style.background = "#ffffff";
-                        vizSection.style.boxShadow = "none"; // 移除导致黑边的内阴影
-                        vizSection.style.borderTop = "1px solid #e0e0e0"; // 边框改为浅灰色
+                        vizSection.style.boxShadow = "none";
+                        vizSection.style.borderTop = "1px solid #e0e0e0";
                     }
 
-                    // 确保雾也是白色的，防止远处变黑
+                    // 雾改为白色
                     if (scene && scene.fog) {
                         scene.fog.color.set(0xffffff);
                     }
 
-                    // 隐藏背景图（如果有）
+                    // 隐藏背景图
                     if (bgMesh) bgMesh.visible = false;
 
                 } else {
-                    // === 切换到深色模式 (默认) ===
+                    // === 切换到深色模式 (Dark Mode) ===
+
+                    // 🔥 核心修改：移除 light-mode 类
+                    document.body.classList.remove('light-mode');
+
                     document.getElementById('bg-mode-dark').classList.add('btn-primary');
                     document.getElementById('bg-mode-white').classList.remove('btn-primary');
                     document.getElementById('bg-mode-white').style.border = "none";
 
-                    // 恢复深色背景和阴影
+                    // 恢复深色背景
                     if (vizSection) {
-                        vizSection.style.background = "#000000"; // 🔥 改为纯黑
-                        // 🔥 恢复深色模式的内阴影
+                        vizSection.style.background = "#000000";
                         vizSection.style.boxShadow = "inset 0 20px 50px -10px rgba(0,0,0,0.9)";
                         vizSection.style.borderTop = "1px solid rgba(255, 255, 255, 0.05)";
                     }
