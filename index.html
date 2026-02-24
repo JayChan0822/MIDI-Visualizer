@@ -5593,11 +5593,16 @@
 
             STATE.clips.forEach(clip => {
                 if (clip.mesh && clip.track.type === 'midi') {
-                    // ... 遍历 children 或 materials
-                    child.material.uniforms.uHighlightColor.value.setHex(0xffffff);
-                    // 🔥 重置 uniforms
-                    if(child.material.uniforms.uHighlightBrightness) {
-                        child.material.uniforms.uHighlightBrightness.value = 1.0;
+                    const mat = clip.mesh.material; // 直接获取 InstancedMesh 的材质
+                    if (mat && mat.uniforms) {
+                        // 重置高光颜色为白色
+                        if (mat.uniforms.uHighlightColor) {
+                            mat.uniforms.uHighlightColor.value.setHex(0xffffff);
+                        }
+                        // 重置高光亮度为 1.0
+                        if (mat.uniforms.uHighlightBrightness) {
+                            mat.uniforms.uHighlightBrightness.value = 1.0;
+                        }
                     }
                 }
             });
