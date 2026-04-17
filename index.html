@@ -2986,6 +2986,27 @@
         }
     }
 
+    function getCurrentThemeMode() {
+        try {
+            return localStorage.getItem('mv_bg_theme_mode') || 'dark';
+        } catch (err) {
+            return 'dark';
+        }
+    }
+
+    function resolveExportCanvasClear(hasImportedBackground) {
+        if (hasImportedBackground) {
+            return { color: 0x000000, alpha: 0 };
+        }
+
+        const themeMode = getCurrentThemeMode();
+        if (themeMode === 'white') {
+            return { color: 0xffffff, alpha: 1 };
+        }
+
+        return { color: 0x000000, alpha: 1 };
+    }
+
     const STATE = {
         isPlaying: false,
         currentTime: 0,         // 全局时间 (秒)
@@ -9293,6 +9314,7 @@
         chunks: [],
 
         originalSize: { width: 0, height: 0 },
+        originalClear: { color: 0x000000, alpha: 0 },
         audioContext: null,
         destNode: null,
         sourceNode: null,
@@ -9422,8 +9444,11 @@
             this.originalSize.width = canvas.width;
             this.originalSize.height = canvas.height;
             this.originalPixelRatio = renderer.getPixelRatio();
+            this.originalClear.color = renderer.getClearColor(new THREE.Color()).getHex();
+            this.originalClear.alpha = renderer.getClearAlpha();
 
-            renderer.setClearColor(0x000000, 1.0);
+            const exportCanvasClear = resolveExportCanvasClear(Boolean(currentBgType));
+            renderer.setClearColor(exportCanvasClear.color, exportCanvasClear.alpha);
 
             // 🔥🔥🔥 核心修复 2: 强制 1.0 像素比，确保 1080p 就是 1080p 🔥🔥🔥
             renderer.setPixelRatio(1.0);
@@ -9561,7 +9586,7 @@
 
             renderer.setPixelRatio(this.originalPixelRatio || window.devicePixelRatio);
 
-            renderer.setClearColor(0x0b0c15, 0);
+            renderer.setClearColor(this.originalClear.color, this.originalClear.alpha);
 
             if (this.forcedBgVisible) {
                 // 如果是我们刚才强行打开的，现在关掉它
