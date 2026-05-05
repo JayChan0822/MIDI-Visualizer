@@ -330,6 +330,117 @@ test('getTimelineTimeAtOffsetX converts beat-domain offsets back to real time', 
   assert.equal(getTimelineTimeAtOffsetX(432), 5);
 });
 
+test('getSceneXAtTime follows the same beat-domain spacing as the timeline', () => {
+  const context = {
+    STATE: {
+      pxPerBeat: 48,
+      playbackSpeed: 20,
+      tempoMap: [],
+      midiTiming: {
+        hasTempoEvents: true,
+      },
+      metronome: {
+        fallbackBpm: 120,
+      },
+    },
+  };
+  const {
+    buildTempoMap,
+    getSceneXAtTime,
+  } = loadFunctions([
+    'buildTempoMap',
+    'getTempoSegmentAtTime',
+    'getBeatPositionAtTime',
+    'getEffectiveTempoMap',
+    'getTimelineBeatAtTime',
+    'getSceneXAtTime',
+  ], context);
+
+  context.STATE.tempoMap = buildTempoMap([
+    { time: 0, bpm: 120 },
+    { time: 4, bpm: 60 },
+  ], 120, 0);
+
+  assert.equal(getSceneXAtTime(2), 80);
+  assert.equal(getSceneXAtTime(4), 160);
+});
+
+test('getSceneWidthBetweenTimes stretches scene width across tempo changes', () => {
+  const context = {
+    STATE: {
+      pxPerBeat: 48,
+      playbackSpeed: 20,
+      tempoMap: [],
+      midiTiming: {
+        hasTempoEvents: true,
+      },
+      metronome: {
+        fallbackBpm: 120,
+      },
+    },
+  };
+  const {
+    buildTempoMap,
+    getSceneWidthBetweenTimes,
+  } = loadFunctions([
+    'buildTempoMap',
+    'getTempoSegmentAtTime',
+    'getBeatPositionAtTime',
+    'getTimeAtBeat',
+    'getEffectiveTempoMap',
+    'getTimelineBeatAtTime',
+    'getSceneXAtTime',
+    'getSceneWidthBetweenTimes',
+  ], context);
+
+  context.STATE.tempoMap = buildTempoMap([
+    { time: 0, bpm: 120 },
+    { time: 4, bpm: 60 },
+  ], 120, 0);
+
+  assert.equal(getSceneWidthBetweenTimes(0, 2), 80);
+  assert.equal(getSceneWidthBetweenTimes(4, 6), 40);
+});
+
+test('getClipRelativeTimeAtPixel warps audio thumbnail sampling in beat-domain view', () => {
+  const context = {
+    STATE: {
+      pxPerBeat: 48,
+      tempoMap: [],
+      midiTiming: {
+        hasTempoEvents: true,
+      },
+      metronome: {
+        fallbackBpm: 120,
+      },
+    },
+  };
+  const {
+    buildTempoMap,
+    getClipRelativeTimeAtPixel,
+  } = loadFunctions([
+    'buildTempoMap',
+    'getTempoSegmentAtTime',
+    'getBeatPositionAtTime',
+    'getTimeAtBeat',
+    'getEffectiveTempoMap',
+    'getTimelinePixelsPerBeat',
+    'getTimelineBeatAtTime',
+    'getTimelineXAtTime',
+    'getTimelineTimeAtBeat',
+    'getTimelineTimeAtOffsetX',
+    'getClipRelativeTimeAtPixel',
+  ], context);
+
+  context.STATE.tempoMap = buildTempoMap([
+    { time: 0, bpm: 120 },
+    { time: 4, bpm: 60 },
+  ], 120, 0);
+
+  assert.equal(getClipRelativeTimeAtPixel(240, 0, 6, 480), 2.5);
+  assert.equal(getClipRelativeTimeAtPixel(400, 0, 6, 480), 4.333333);
+});
+
 test('collectTimeRulerMarks keeps real-time labels while mapping positions through beat spacing', () => {
   const context = {
     STATE: {
@@ -537,6 +648,152 @@ test('collectTempoLaneRenderPoints maps tempo points into beat-domain x and bpm 
   assert.equal(points[1].x, 384);
   assert.equal(points[0].label, '120 BPM');
   assert.equal(points[1].label, '90 BPM');
+});
+
+test('annotateMidiTrackBeatAnchors stores beat-based positions for imported MIDI notes', () => {
+  const context = {
+    STATE: {
+      tempoMap: [],
+      midiTiming: {
+        hasTempoEvents: true,
+      },
+      metronome: {
+        fallbackBpm: 120,
+      },
+    },
+  };
+  const {
+    buildTempoMap,
+    annotateMidiTrackBeatAnchors,
+  } = loadFunctions([
+    'buildTempoMap',
+    'getTempoSegmentAtTime',
+    'getBeatPositionAtTime',
+    'annotateMidiTrackBeatAnchors',
+  ], context);
+
+  const sourceTempoMap = buildTempoMap([{ time: 0, bpm: 120 }], 120, 0);
+  const track = {
+    notes: [
+      { time: 2, duration: 0.5, midi: 60 },
+    ],
+  };
+
+  annotateMidiTrackBeatAnchors(track, sourceTempoMap);
+
+  assert.deepEqual(normalize(track.notes[0]), {
+    time: 2,
+    duration: 0.5,
+    midi: 60,
+    sourceBeat: 4,
+    sourceBeatDuration: 1,
+  });
+});
+
+test('retimeMidiTrackFromBeatAnchors stretches imported MIDI notes when a new tempo map arrives', () => {
+  const context = {
+    STATE: {
+      tempoMap: [],
+      midiTiming: {
+        hasTempoEvents: true,
+      },
+      metronome: {
+        fallbackBpm: 120,
+      },
+    },
+  };
+  const {
+    buildTempoMap,
+    retimeMidiTrackFromBeatAnchors,
+  } = loadFunctions([
+    'buildTempoMap',
+    'getTempoSegmentAtTime',
+    'getBeatPositionAtTime',
+    'getTimeAtBeat',
+    'annotateMidiTrackBeatAnchors',
+    'retimeMidiTrackFromBeatAnchors',
+  ], context);
+
+  const sourceTempoMap = buildTempoMap([{ time: 0, bpm: 120 }], 120, 0);
+  const targetTempoMap = buildTempoMap([{ time: 0, bpm: 60 }], 60, 0);
+  const track = {
+    notes: [
+      { time: 2, duration: 0.5, midi: 60, sourceBeat: 4, sourceBeatDuration: 1 },
+      { time: 3, duration: 0.25, midi: 64, sourceBeat: 6, sourceBeatDuration: 0.5 },
+    ],
+  };
+
+  retimeMidiTrackFromBeatAnchors(track, targetTempoMap);
+
+  assert.deepEqual(normalize(track.notes), [
+    { time: 4, duration: 1, midi: 60, sourceBeat: 4, sourceBeatDuration: 1 },
+    { time: 6, duration: 0.5, midi: 64, sourceBeat: 6, sourceBeatDuration: 0.5 },
+  ]);
+});
+
+test('refreshTimelineForTempoState rebuilds audio and MIDI visuals after tempo changes', () => {
+  const calls = [];
+  const midiClip = {
+    track: { type: 'midi' },
+    data: {
+      notes: [
+        { time: 1, duration: 0.5 },
+      ],
+    },
+    duration: 1.5,
+    updateDOMPosition() { calls.push('midi-dom'); },
+    build3D() { calls.push('midi-build'); },
+    update3DPosition() { calls.push('midi-3d'); },
+  };
+  const audioClip = {
+    track: { type: 'audio' },
+    data: {},
+    duration: 2,
+    updateDOMPosition() { calls.push('audio-dom'); },
+    build3D() { calls.push('audio-build'); },
+    update3DPosition() { calls.push('audio-3d'); },
+  };
+
+  const context = {
+    STATE: {
+      clips: [midiClip, audioClip],
+      tempoLaneVisible: true,
+    },
+    getEffectiveTempoMap() {
+      return [{ time: 0, bpm: 120, beatStart: 0, secondsPerBeat: 0.5 }];
+    },
+    retimeMidiTrackFromBeatAnchors(data) {
+      calls.push(`retime:${data.notes.length}`);
+    },
+    updateTotalDuration() {
+      calls.push('update-duration');
+    },
+    updatePlayhead() {
+      calls.push('update-playhead');
+    },
+    setTempoLaneVisible(flag) {
+      calls.push(`tempo-visible:${flag}`);
+    },
+  };
+
+  const { refreshTimelineForTempoState } = loadFunctions([
+    'refreshTimelineForTempoState',
+  ], context);
+
+  refreshTimelineForTempoState();
+
+  assert.deepEqual(calls, [
+    'retime:1',
+    'update-duration',
+    'midi-dom',
+    'midi-build',
+    'midi-3d',
+    'audio-dom',
+    'audio-build',
+    'audio-3d',
+    'update-playhead',
+    'tempo-visible:true',
+  ]);
 });
 
 test('getEffectiveTempoMap falls back to metronome BPM when no MIDI tempo map exists', () => {

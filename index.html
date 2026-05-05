@@ -4547,7 +4547,7 @@
             const y = (midiPitch - minPitch) * heightStep - centerOffset;
             const zStep = STATE.zSeparation;
             const zOffset = (track.zRank || 0) * zStep; // 使用该轨道的 ZRank
-            const startX = STATE.currentTime * STATE.playbackSpeed;
+            const startX = getSceneXAtTime(STATE.currentTime);
 
             mesh.position.set(startX, y, zOffset);
             mesh.scale.set(1, 1, 1);
@@ -4630,7 +4630,7 @@
     function updateRecordingVisuals() {
         if (STATE.activeMidiNotes.size === 0) return;
 
-        const currentX = STATE.currentTime * STATE.playbackSpeed;
+        const currentX = getSceneXAtTime(STATE.currentTime);
         const heightStep = (60 / 88) * STATE.noteHeightScale;
         const thickness = 0.8 * heightStep * STATE.noteThickness;
 
@@ -4638,7 +4638,7 @@
             // 遍历该音高下的所有实例 (每个轨道一个)
             instances.forEach(noteData => {
                 const mesh = noteData.mesh;
-                const startX = noteData.startTime * STATE.playbackSpeed;
+                const startX = getSceneXAtTime(noteData.startTime);
                 const width = Math.max(thickness, currentX - startX);
 
                 let extraLength = (width / thickness) - 1.0;
@@ -5401,8 +5401,8 @@
             if (!this.data) return;
             // 音频数据通常很大，需要降采样
             const rawData = this.data.getChannelData(0); // 获取左声道
-            const step = Math.ceil(rawData.length / width); // 每个像素代表多少个采样点
             const amp = height / 2;
+            const clipDuration = Math.max(0.000001, this.duration || 0.000001);
 
             ctx.fillStyle = color;
             ctx.beginPath();
@@ -5412,10 +5412,14 @@
                 let min = 1.0;
                 let max = -1.0;
 
+                const segmentStartTime = getClipRelativeTimeAtPixel(i, this.startTime, clipDuration, width);
+                const segmentEndTime = getClipRelativeTimeAtPixel(i + 1, this.startTime, clipDuration, width);
+                const startIndex = Math.max(0, Math.min(rawData.length - 1, Math.floor((segmentStartTime / clipDuration) * rawData.length)));
+                const endIndex = Math.max(startIndex + 1, Math.min(rawData.length, Math.ceil((segmentEndTime / clipDuration) * rawData.length)));
+
                 // 找出当前像素对应的时间窗口内的最大最小值
-                let startIndex = i * step;
-                for (let j = 0; j < step; j++) {
-                    const datum = rawData[startIndex + j];
+                for (let j = startIndex; j < endIndex; j++) {
+                    const datum = rawData[j];
                     if (datum < min) min = datum;
                     if (datum > max) max = datum;
                 }
@@ -5612,16 +5616,16 @@
             const myRank = this.track.zRank || 0;
             const zStep = STATE.zSeparation;
             const zOffset = myRank * zStep;
+            const clipSceneStartX = getSceneXAtTime(this.startTime);
 
             notes.forEach((note, i) => {
-                const noteTime = note.time;
-                const duration = note.duration;
-
-                const x = (noteTime * STATE.playbackSpeed) + (duration * STATE.playbackSpeed / 2);
+                const noteStartTime = this.startTime + note.time;
+                const noteEndTime = noteStartTime + note.duration;
+                const noteLocalStartX = getSceneXAtTime(noteStartTime) - clipSceneStartX;
+                const width3D = getSceneWidthBetweenTimes(noteStartTime, noteEndTime);
+                const x = noteLocalStartX + (width3D / 2);
                 const centerOffset = 30 * STATE.noteHeightScale;
                 const y = (note.midi - minPitch) * heightStep - centerOffset;
-
-                const width3D = duration * STATE.playbackSpeed;
                 const thickness = 0.8 * heightStep * STATE.noteThickness;
 
                 // 应用位置 (直接使用 zOffset)
@@ -5641,8 +5645,8 @@
             mesh.geometry.computeBoundingSphere();
             // 由于是 InstancedMesh，我们需要手动扩大包围球以覆盖所有实例
             // 这是一个简化的估算方法，覆盖整首歌的长度
-            const durationX = this.duration * STATE.playbackSpeed;
-            const centerX = this.startTime * STATE.playbackSpeed + durationX / 2;
+            const durationX = getSceneWidthBetweenTimes(this.startTime, this.startTime + this.duration);
+            const centerX = getSceneXAtTime(this.startTime) + durationX / 2;
             const radius = Math.max(durationX, 2000); // 估算半径
 
             mesh.boundingSphere = new THREE.Sphere(new THREE.Vector3(centerX, 0, 0), radius);
@@ -5673,7 +5677,8 @@
             }
 
             const rawData = this.data.getChannelData(0);
-            const visualWidth = this.duration * STATE.playbackSpeed;
+            const visualWidth = getSceneWidthBetweenTimes(this.startTime, this.startTime + this.duration);
+            const clipSceneStartX = getSceneXAtTime(this.startTime);
 
             const density = 0.4;
             let samples = Math.floor(visualWidth * density);
@@ -5754,7 +5759,8 @@
                 const limit = baseMidiHeight * 0.5;
                 val = Math.max(-limit, Math.min(limit, val));
 
-                const x = (i / samples) * (this.duration * STATE.playbackSpeed);
+                const sampleTime = (i / samples) * this.duration;
+                const x = getSceneXAtTime(this.startTime + sampleTime) - clipSceneStartX;
                 const totalHeight = Math.max(0.2, Math.abs(val * 2));
 
                 dummy.position.set(x, 0, -15);
@@ -5775,8 +5781,7 @@
 
         update3DPosition() {
             if (this.mesh) {
-                // 3D 场景里的位置 = Clip 开始时间 * 播放速度
-                this.mesh.position.x = this.startTime * STATE.playbackSpeed;
+                this.mesh.position.x = getSceneXAtTime(this.startTime);
             }
         }
 
@@ -9212,6 +9217,52 @@
         }));
     }
 
+    function annotateMidiTrackBeatAnchors(track, sourceTempoMap) {
+        if (!track || !Array.isArray(track.notes) || track.notes.length === 0) return track;
+
+        track.notes.forEach((note) => {
+            const noteStart = Number(note?.time) || 0;
+            const noteEnd = noteStart + Math.max(0, Number(note?.duration) || 0);
+            const sourceBeat = getBeatPositionAtTime(noteStart, sourceTempoMap);
+            const sourceBeatEnd = getBeatPositionAtTime(noteEnd, sourceTempoMap);
+
+            note.sourceBeat = Number(sourceBeat.toFixed(6));
+            note.sourceBeatDuration = Number(Math.max(0.000001, sourceBeatEnd - sourceBeat).toFixed(6));
+        });
+
+        return track;
+    }
+
+    function retimeMidiTrackFromBeatAnchors(track, targetTempoMap) {
+        if (!track || !Array.isArray(track.notes) || track.notes.length === 0) return track;
+
+        track.notes.forEach((note) => {
+            if (!Number.isFinite(note?.sourceBeat) || !Number.isFinite(note?.sourceBeatDuration)) return;
+
+            const noteStartTime = getTimeAtBeat(note.sourceBeat, targetTempoMap);
+            const noteEndTime = getTimeAtBeat(note.sourceBeat + note.sourceBeatDuration, targetTempoMap);
+            note.time = Number(noteStartTime.toFixed(6));
+            note.duration = Number(Math.max(0.000001, noteEndTime - noteStartTime).toFixed(6));
+        });
+
+        return track;
+    }
+
+    function refreshImportedMidiClipTiming(clip, tempoMap) {
+        if (!clip || clip.track?.type !== 'midi' || !clip.data) return;
+
+        retimeMidiTrackFromBeatAnchors(clip.data, tempoMap);
+
+        const notes = Array.isArray(clip.data.notes) ? clip.data.notes : [];
+        if (notes.length > 0) {
+            clip.duration = notes.reduce((maxEnd, note) => Math.max(maxEnd, (Number(note.time) || 0) + (Number(note.duration) || 0)), 0);
+        }
+
+        clip.updateDOMPosition();
+        clip.build3D();
+        clip.update3DPosition();
+    }
+
     function getTempoLaneBpmRange(tempoMap) {
         const points = normalizeEditableTempoMap(tempoMap || getEffectiveTempoMap());
         const bpms = points.map((point) => point.bpm);
@@ -9271,8 +9322,24 @@
     }
 
     function refreshTimelineForTempoState() {
+        const effectiveTempoMap = getEffectiveTempoMap();
+        STATE.clips.forEach((clip) => {
+            if (clip.track?.type === 'midi') {
+                retimeMidiTrackFromBeatAnchors(clip.data, effectiveTempoMap);
+                const notes = Array.isArray(clip.data?.notes) ? clip.data.notes : [];
+                if (notes.length > 0) {
+                    clip.duration = notes.reduce((maxEnd, note) => Math.max(maxEnd, (Number(note.time) || 0) + (Number(note.duration) || 0)), 0);
+                }
+            }
+        });
         updateTotalDuration();
-        STATE.clips.forEach((clip) => clip.updateDOMPosition());
+        STATE.clips.forEach((clip) => {
+            clip.updateDOMPosition();
+            if (clip.track?.type === 'midi' || clip.track?.type === 'audio') {
+                clip.build3D();
+            }
+            clip.update3DPosition();
+        });
         updatePlayhead();
         setTempoLaneVisible(STATE.tempoLaneVisible);
     }
@@ -9425,6 +9492,23 @@
         const startBeat = getTimelineBeatAtTime(startTime, tempoMap);
         const endBeat = getTimelineBeatAtTime(endTime, tempoMap);
         return Math.max(0, (endBeat - startBeat) * pxPerBeat);
+    }
+
+    function getSceneXAtTime(time, unitsPerBeat = STATE.playbackSpeed, tempoMap = getEffectiveTempoMap()) {
+        return getTimelineBeatAtTime(time, tempoMap) * unitsPerBeat;
+    }
+
+    function getSceneWidthBetweenTimes(startTime, endTime, unitsPerBeat = STATE.playbackSpeed, tempoMap = getEffectiveTempoMap()) {
+        return Math.max(0, getSceneXAtTime(endTime, unitsPerBeat, tempoMap) - getSceneXAtTime(startTime, unitsPerBeat, tempoMap));
+    }
+
+    function getClipRelativeTimeAtPixel(pixelX, clipStartTime, clipDuration, pixelWidth, tempoMap = getEffectiveTempoMap()) {
+        const safeDuration = Math.max(0, Number(clipDuration) || 0);
+        const safeWidth = Math.max(1, Number(pixelWidth) || 1);
+        const clampedPixel = Math.max(0, Math.min(safeWidth, Number(pixelX) || 0));
+        const clipStartX = getTimelineXAtTime(clipStartTime, getTimelinePixelsPerBeat(), tempoMap);
+        const absoluteTime = getTimelineTimeAtOffsetX(clipStartX + clampedPixel, getTimelinePixelsPerBeat(), tempoMap);
+        return Math.max(0, Math.min(safeDuration, Number((absoluteTime - clipStartTime).toFixed(6))));
     }
 
     function formatRulerTime(seconds) {
@@ -9754,13 +9838,15 @@
                 // ==========================================
 
                 const effectiveTrimOffset = (globalStartTime > 0.05 && globalStartTime !== Infinity) ? globalStartTime : 0;
+                const importedTempoMap = buildTempoMap(headerTempos, STATE.bpm, effectiveTrimOffset);
+                const importedTimeSignatureMap = buildTimeSignatureMap(headerTimeSignatures, STATE.timeSignature, effectiveTrimOffset);
                 STATE.midiTiming = {
                     source: file.name || 'imported-midi',
                     trimOffset: effectiveTrimOffset,
                     hasTempoEvents: headerTempos.length > 0
                 };
-                STATE.tempoMap = buildTempoMap(headerTempos, STATE.bpm, effectiveTrimOffset);
-                STATE.timeSignatureMap = buildTimeSignatureMap(headerTimeSignatures, STATE.timeSignature, effectiveTrimOffset);
+                STATE.tempoMap = importedTempoMap;
+                STATE.timeSignatureMap = importedTimeSignatureMap;
 
                 if (STATE.tempoMap.length > 0) {
                     STATE.bpm = Math.round(STATE.tempoMap[0].bpm);
@@ -9822,6 +9908,7 @@
                         newTrackIds.push(targetTrack.id);
                         targetTrack.setName(finalName);
 
+                        annotateMidiTrackBeatAnchors(t, importedTempoMap);
                         targetTrack.addClip(0, midiData.duration, t, finalName, t);
                         targetTrack = null;
                     }
@@ -9830,12 +9917,11 @@
                 updateTrackZRanks();
 
                 autoFitZoom(midiData.duration);
-                updateTotalDuration();
-                STATE.clips.forEach(c => c.updateDOMPosition());
+                refreshTimelineForTempoState();
                 reorderTracks();
 
-                if (newTrackIds.length > 0) {
-                    const newTempoState = cloneTempoState();
+                const newTempoState = cloneTempoState();
+                if (newTrackIds.length > 0 || JSON.stringify(oldTempoState) !== JSON.stringify(newTempoState)) {
                     HistoryMgr.add({
                         type: 'import_tracks',
                         trackIds: newTrackIds,
@@ -10294,7 +10380,7 @@
         updatePlayhead();
 
         // 3D 相机瞬移
-        const targetX = STATE.currentTime * STATE.playbackSpeed;
+        const targetX = getSceneXAtTime(STATE.currentTime);
         const delta = targetX - cameraTargetX;
         camera.position.x += delta;    // 相机移动 delta
         controls.target.x += delta;
@@ -10561,7 +10647,7 @@
             }
 
             // 移动 3D 相机
-            const idealTargetX = STATE.currentTime * STATE.playbackSpeed;
+            const idealTargetX = getSceneXAtTime(STATE.currentTime);
 
             // 🔥 1. 计算用户当前的平移偏移量 (User Pan Offset)
             // 逻辑：当前的目标位置 - 上一帧记录的播放头位置 = 用户手动拖拽产生的额外偏移
@@ -10583,7 +10669,7 @@
         }
 
         // --- Shader Uniforms 更新 ---
-        const playheadX = STATE.currentTime * STATE.playbackSpeed;
+        const playheadX = getSceneXAtTime(STATE.currentTime);
 
         // 获取当前开关状态 (1.0 开, 0.0 关)
         const fadeVal = STATE.enableMidiFade ? 1.0 : 0.0;
