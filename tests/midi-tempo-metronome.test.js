@@ -402,6 +402,40 @@ test('getSceneWidthBetweenTimes stretches scene width across tempo changes', () 
   assert.equal(getSceneWidthBetweenTimes(4, 6), 40);
 });
 
+test('getSceneXAtTime supports alternate W-Scale values for focus-preserving zoom', () => {
+  const context = {
+    STATE: {
+      playbackSpeed: 20,
+      tempoMap: [],
+      midiTiming: {
+        hasTempoEvents: true,
+      },
+      metronome: {
+        fallbackBpm: 120,
+      },
+    },
+  };
+  const {
+    buildTempoMap,
+    getSceneXAtTime,
+  } = loadFunctions([
+    'buildTempoMap',
+    'getTempoSegmentAtTime',
+    'getBeatPositionAtTime',
+    'getEffectiveTempoMap',
+    'getTimelineBeatAtTime',
+    'getSceneXAtTime',
+  ], context);
+
+  context.STATE.tempoMap = buildTempoMap([
+    { time: 0, bpm: 120 },
+    { time: 4, bpm: 60 },
+  ], 120, 0);
+
+  assert.equal(getSceneXAtTime(5, 20), 180);
+  assert.equal(getSceneXAtTime(5, 40), 360);
+});
+
 test('getClipRelativeTimeAtPixel warps audio thumbnail sampling in beat-domain view', () => {
   const context = {
     STATE: {
@@ -794,6 +828,17 @@ test('refreshTimelineForTempoState rebuilds audio and MIDI visuals after tempo c
     'update-playhead',
     'tempo-visible:true',
   ]);
+});
+
+test('getExportVideoBitrate favors smoother gradients at higher resolutions', () => {
+  const { getExportVideoBitrate } = loadFunctions([
+    'getExportVideoBitrate',
+  ]);
+
+  assert.equal(getExportVideoBitrate(720, 'video/mp4'), 18000000);
+  assert.equal(getExportVideoBitrate(1080, 'video/mp4'), 32000000);
+  assert.equal(getExportVideoBitrate(1440, 'video/mp4'), 60000000);
+  assert.equal(getExportVideoBitrate(2160, 'video/webm;codecs=vp9'), 80000000);
 });
 
 test('getEffectiveTempoMap falls back to metronome BPM when no MIDI tempo map exists', () => {

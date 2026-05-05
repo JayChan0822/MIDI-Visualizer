@@ -4818,27 +4818,27 @@
         scene.add(starMesh);
 
         const bgCanvas = document.createElement('canvas');
-        bgCanvas.width = 512;
-        bgCanvas.height = 512;
+        bgCanvas.width = 2048;
+        bgCanvas.height = 2048;
         const bgCtx = bgCanvas.getContext('2d');
 
         // 渐变 (之前的颜色)
-        const bgGrad = bgCtx.createRadialGradient(256, 256, 0, 256, 256, 480);
+        const halfSize = bgCanvas.width / 2;
+        const bgGrad = bgCtx.createRadialGradient(halfSize, halfSize, 0, halfSize, halfSize, bgCanvas.width * 0.94);
         bgGrad.addColorStop(0.0, '#586b85');
         bgGrad.addColorStop(0.4, '#253045');
         bgGrad.addColorStop(1.0, '#000000');
 
         bgCtx.fillStyle = bgGrad;
-        bgCtx.fillRect(0, 0, 512, 512);
+        bgCtx.fillRect(0, 0, bgCanvas.width, bgCanvas.height);
 
         // --- 🔥 关键优化：添加抖动 (Dithering) 去除色阶 ---
-        const imageData = bgCtx.getImageData(0, 0, 512, 512);
+        const imageData = bgCtx.getImageData(0, 0, bgCanvas.width, bgCanvas.height);
         const data = imageData.data;
 
         for (let i = 0; i < data.length; i += 4) {
-            // 生成 -1.5 到 +1.5 之间的随机噪音
-            // 这个数值很小，不影响观感，但足以打破色阶
-            const noise = (Math.random() - 0.5) * 3;
+            // 轻微提升抖动强度，帮助 8-bit 视频编码保住深色渐变层次
+            const noise = (Math.random() - 0.5) * 5;
 
             data[i]     = Math.max(0, Math.min(255, data[i] + noise));     // R
             data[i + 1] = Math.max(0, Math.min(255, data[i + 1] + noise)); // G
@@ -7892,9 +7892,9 @@
             STATE.playbackSpeed = newSpeed;
 
             // 2. 核心修复：计算缩放导致的中心点位移差
-            // 只有基于 currentTime 计算，才能保证以"播放头"为中心缩放
-            const oldFocusX = STATE.currentTime * oldSpeed;
-            const newFocusX = STATE.currentTime * newSpeed;
+            // 只有基于当前 tempo-aware 场景坐标计算，才能保证以"播放头"为中心缩放
+            const oldFocusX = getSceneXAtTime(STATE.currentTime, oldSpeed);
+            const newFocusX = getSceneXAtTime(STATE.currentTime, newSpeed);
             const delta = newFocusX - oldFocusX;
 
             // 3. 重建 3D 物体 (保持不变)
@@ -9511,6 +9511,16 @@
         return Math.max(0, Math.min(safeDuration, Number((absoluteTime - clipStartTime).toFixed(6))));
     }
 
+    function getExportVideoBitrate(resolutionP, mimeType) {
+        const safeResolution = Number(resolutionP) || 1080;
+        const isMp4 = String(mimeType || '').includes('mp4');
+
+        if (safeResolution >= 2160) return isMp4 ? 90000000 : 80000000;
+        if (safeResolution >= 1440) return isMp4 ? 60000000 : 50000000;
+        if (safeResolution >= 1080) return isMp4 ? 32000000 : 28000000;
+        return isMp4 ? 18000000 : 16000000;
+    }
+
     function formatRulerTime(seconds) {
         const safeSeconds = Math.max(0, Number.isFinite(seconds) ? seconds : 0);
         const m = Math.floor(safeSeconds / 60);
@@ -10936,8 +10946,8 @@
 
             const combinedStream = new MediaStream(tracks);
 
-            // 提高码率上限
-            const bitrate = resolutionP > 1080 ? 25000000 : 12000000;
+            // 提高码率上限，优先保住深色渐变和星空细节
+            const bitrate = getExportVideoBitrate(resolutionP, mimeType);
             const options = {
                 mimeType: mimeType,
                 videoBitsPerSecond: bitrate,
