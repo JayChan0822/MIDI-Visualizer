@@ -39,6 +39,7 @@
             --blur-amt: 40px; /* 模糊度加倍，磨砂感更高级 */
 
             --timeline-height: 40vh;
+            --track-row-height: 64px;
         }
 
         body {
@@ -126,6 +127,23 @@
             flex-shrink: 0;
         }
 
+        .transport-btn {
+            width: 32px;
+            padding: 0;
+        }
+
+        .transport-btn svg {
+            width: 16px;
+            height: 16px;
+            pointer-events: none;
+            flex-shrink: 0;
+        }
+
+        .transport-btn .record-dot {
+            fill: currentColor;
+            stroke: none;
+        }
+
         /* 悬停效果：材质变亮，文字变白 */
         .btn:hover {
             background: rgba(255, 255, 255, 0.1);
@@ -211,6 +229,31 @@
             opacity: 0.6;
         }
 
+        .toolbar-select {
+            height: 32px;
+            padding: 0 10px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.04);
+            color: var(--text-main);
+            font-size: 12px;
+            outline: none;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            flex-shrink: 0;
+        }
+
+        .toolbar-select:hover,
+        .toolbar-select:focus {
+            border-color: rgba(255, 255, 255, 0.25);
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .toolbar-select option {
+            background: #111;
+            color: #fff;
+        }
+
         /* --- 标尺区域 (Precision Ruler) --- */
         #ruler-container {
             display: flex;
@@ -235,18 +278,18 @@
             border-right: 1px solid var(--glass-border);
             flex-shrink: 0;
 
-            /* 🔥 新增布局属性 */
             display: flex;
             align-items: center;
             justify-content: center;
+            gap: 8px;
             padding: 0 8px;
             box-sizing: border-box;
             z-index: 35; /* 确保在最上层，方便点击 */
         }
 
-        /* 新增：新建轨道按钮的样式 (嵌入式风格) */
-        #addTrackBtn {
-            width: 100%;
+        #addTrackBtn,
+        #toggleTempoLaneBtn {
+            flex: 1 1 0;
             height: 20px; /* 扁平一点，适应标尺高度 */
 
             background: rgba(255, 255, 255, 0.05);
@@ -263,11 +306,19 @@
             justify-content: center;
         }
 
-        #addTrackBtn:hover {
+        #addTrackBtn:hover,
+        #toggleTempoLaneBtn:hover {
             background: rgba(46, 154, 255, 0.15);
             border-color: var(--accent-blue);
             color: var(--accent-blue);
             box-shadow: 0 0 8px rgba(46, 154, 255, 0.2);
+        }
+
+        #toggleTempoLaneBtn.active {
+            background: rgba(46, 154, 255, 0.22);
+            border-color: rgba(46, 154, 255, 0.8);
+            color: #d8ebff;
+            box-shadow: 0 0 10px rgba(46, 154, 255, 0.25);
         }
 
         #ruler-content {
@@ -322,6 +373,129 @@
             box-shadow: inset 0 4px 20px rgba(0,0,0,0.5); /* 内部阴影，增加深邃感 */
         }
 
+        #tempo-lane-row {
+            height: 0;
+            overflow: hidden;
+            display: flex;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            background:
+                linear-gradient(180deg, rgba(12, 15, 24, 0.94), rgba(7, 9, 15, 0.9));
+            transition: height 0.2s ease, border-color 0.2s ease;
+        }
+
+        #tempo-lane-row.visible {
+            height: 74px;
+            border-bottom-color: rgba(255,255,255,0.08);
+        }
+
+        #tempo-lane-label {
+            width: 250px;
+            flex-shrink: 0;
+            box-sizing: border-box;
+            border-right: 1px solid var(--glass-border);
+            padding: 10px 12px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 4px;
+            background: rgba(11, 12, 18, 0.84);
+        }
+
+        #tempo-lane-label strong {
+            font-size: 11px;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: #d8ebff;
+        }
+
+        #tempo-lane-meta {
+            font-size: 10px;
+            color: rgba(255,255,255,0.52);
+            font-family: "SF Mono", "Menlo", "Consolas", monospace;
+        }
+
+        #tempo-lane-viewport {
+            flex: 1;
+            overflow-x: hidden;
+            overflow-y: hidden;
+            position: relative;
+        }
+
+        #tempo-lane-content {
+            position: relative;
+            height: 74px;
+            min-width: 100%;
+            background:
+                linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0)),
+                linear-gradient(90deg, rgba(255,255,255,0.015), rgba(255,255,255,0));
+        }
+
+        #tempo-lane-svg {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        .tempo-lane-line {
+            fill: none;
+            stroke: rgba(46, 154, 255, 0.92);
+            stroke-width: 2;
+            stroke-linejoin: round;
+            stroke-linecap: round;
+            filter: drop-shadow(0 0 8px rgba(46, 154, 255, 0.25));
+        }
+
+        .tempo-lane-guide {
+            stroke: rgba(255,255,255,0.08);
+            stroke-width: 1;
+            stroke-dasharray: 4 4;
+        }
+
+        #tempo-lane-points {
+            position: absolute;
+            inset: 0;
+        }
+
+        .tempo-lane-handle {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            margin-left: -6px;
+            margin-top: -6px;
+            border-radius: 50%;
+            border: 1px solid rgba(255,255,255,0.7);
+            background: #0a84ff;
+            box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.18);
+            cursor: grab;
+        }
+
+        .tempo-lane-handle.selected {
+            background: #ffd60a;
+            border-color: rgba(255,255,255,0.95);
+            box-shadow: 0 0 0 4px rgba(255, 214, 10, 0.18);
+        }
+
+        .tempo-lane-handle:active {
+            cursor: grabbing;
+        }
+
+        .tempo-lane-tag {
+            position: absolute;
+            transform: translate(-50%, -100%);
+            margin-top: -10px;
+            padding: 2px 6px;
+            border-radius: 999px;
+            border: 1px solid rgba(255,255,255,0.08);
+            background: rgba(4, 8, 16, 0.88);
+            color: rgba(255,255,255,0.75);
+            font-size: 10px;
+            font-family: "SF Mono", "Menlo", "Consolas", monospace;
+            white-space: nowrap;
+            pointer-events: none;
+        }
+
         /* --- 左侧轨道头 (Track Headers / Rack) --- */
         #track-headers {
             width: 250px;
@@ -345,7 +519,7 @@
 
         /* --- 左侧轨道头 (Track Headers / Rack) --- */
         .track-header {
-            height: 64px;
+            height: var(--track-row-height);
             /* 🔥 核心修复：锁定盒模型，确保总高度不随边框增加 */
             box-sizing: border-box;
 
@@ -509,7 +683,7 @@
 
         /* --- 轨道行 (Ambient Lane) --- */
         .track-lane {
-            height: 64px;
+            height: var(--track-row-height);
             /* 1. 锁定盒模型 */
             box-sizing: border-box;
 
@@ -1049,7 +1223,7 @@
             font-weight: 600;
         }
 
-        #context-menu {
+        #context-menu, #metronome-menu {
             position: fixed; /* 🔥 关键修复：必须是固定定位，top/left 才会生效 */
             display: none;   /* 默认隐藏 */
             z-index: 10000;  /* 确保在最上层，遮挡住轨道 */
@@ -1067,7 +1241,7 @@
         .menu-item:hover { background: var(--accent-blue); color: #fff; }
 
         /* --- 右键菜单 (Floating OS Menu) --- */
-        #context-menu {
+        #context-menu, #metronome-menu {
             position: fixed; /* 🔥 保持关键修复 */
             display: none;
             z-index: 10000;
@@ -1116,6 +1290,77 @@
             color: #fff;
             /* 蓝色光晕，增加选中质感 */
             box-shadow: 0 4px 12px rgba(46, 154, 255, 0.3);
+        }
+
+        .menu-separator {
+            height: 1px;
+            margin: 6px 4px;
+            background: rgba(255,255,255,0.08);
+        }
+
+        .menu-section-title {
+            padding: 4px 8px 6px;
+            font-size: 11px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        .menu-choice-row,
+        .menu-bpm-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 0 6px 6px;
+        }
+
+        .menu-choice-btn,
+        .menu-bpm-btn {
+            border: 1px solid rgba(255,255,255,0.1);
+            background: rgba(255,255,255,0.04);
+            color: #fff;
+            border-radius: 8px;
+            height: 30px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .menu-choice-btn {
+            flex: 1;
+            padding: 0 10px;
+            font-size: 12px;
+        }
+
+        .menu-bpm-btn {
+            width: 30px;
+            font-size: 16px;
+            line-height: 1;
+        }
+
+        .menu-choice-btn:hover,
+        .menu-bpm-btn:hover,
+        .menu-choice-btn.active {
+            background: rgba(46, 154, 255, 0.22);
+            border-color: rgba(46, 154, 255, 0.5);
+            box-shadow: 0 4px 12px rgba(46, 154, 255, 0.25);
+        }
+
+        .menu-bpm-input {
+            width: 72px;
+            height: 30px;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.1);
+            background: rgba(255,255,255,0.04);
+            color: #fff;
+            text-align: center;
+            outline: none;
+        }
+
+        .menu-note {
+            padding: 2px 8px 6px;
+            font-size: 11px;
+            line-height: 1.5;
+            color: var(--text-muted);
         }
 
         /* --- Logo 样式 (Premium Brand) --- */
@@ -1653,9 +1898,9 @@
             50% { box-shadow: 0 0 15px #ff453a, inset 0 0 10px #ff453a; }
             100% { box-shadow: 0 0 5px #ff453a; }
         }
-        .active-record div {
+        .active-record .record-dot {
             animation: recordPulse 1s infinite;
-            background: #fff !important; /* 激活时中心变白 */
+            fill: #fff !important; /* 激活时中心变白 */
         }
 
         /* ========================================= */
@@ -1992,13 +2237,27 @@
 
         /* 1. 弹窗容器：纯白卡片 + 强阴影 */
         body.light-mode .modal-content,
-        body.light-mode #context-menu {
+        body.light-mode #context-menu,
+        body.light-mode #metronome-menu {
             background-color: #ffffff !important;
             border: 1px solid #c7c7cc !important; /* 边框加深 */
             box-shadow: 0 25px 50px rgba(0,0,0,0.2) !important; /* 阴影加深，更立体 */
             color: #1d1d1f !important;
             border-radius: 12px !important;
             overflow: hidden !important; /* 确保标题栏背景不溢出圆角 */
+        }
+
+        body.light-mode .menu-section-title,
+        body.light-mode .menu-note {
+            color: #6e6e73 !important;
+        }
+
+        body.light-mode .menu-choice-btn,
+        body.light-mode .menu-bpm-btn,
+        body.light-mode .menu-bpm-input {
+            background: rgba(0,0,0,0.04) !important;
+            border-color: rgba(0,0,0,0.08) !important;
+            color: #1d1d1f !important;
         }
 
         /* 2. 标题栏：增加浅灰背景 (关键：区分头部和内容) */
@@ -2122,6 +2381,22 @@
     </div>
 </div>
 
+<div id="metronome-menu">
+    <div class="menu-section-title">Sound</div>
+    <div class="menu-choice-row">
+        <button class="menu-choice-btn" id="met-sound-click" type="button">Click</button>
+        <button class="menu-choice-btn" id="met-sound-woodblock" type="button">Woodblock</button>
+    </div>
+    <div class="menu-separator"></div>
+    <div class="menu-section-title">Fallback BPM</div>
+    <div class="menu-bpm-row">
+        <button class="menu-bpm-btn" id="met-bpm-dec" type="button">-</button>
+        <input class="menu-bpm-input" id="met-bpm-input" type="number" min="20" max="300" step="1" value="120">
+        <button class="menu-bpm-btn" id="met-bpm-inc" type="button">+</button>
+    </div>
+    <div class="menu-note">有 MIDI 速度轨时自动跟随 Tempo Map</div>
+</div>
+
 <div id="loading" style="display: flex; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 9999; justify-content: center; align-items: center;">
     <div class="loader"></div>
 </div>
@@ -2201,18 +2476,30 @@
                 <span class="logo-text title-main">MIDI</span>
                 <span class="logo-text title-sub">Visualizer</span>
             </div>
-            <span class="version-tag">v2.2.0</span>
+            <span class="version-tag">v2.3.0</span>
         </div>
 
         <div class="toolbar-separator"></div>
 
-        <button class="btn btn-blue" id="playBtn" style="border-color: rgba(48, 209, 88, 0.4); background: rgba(48, 209, 88, 0.1); color: #30d158;">
-            PLAY
+        <button class="btn btn-blue transport-btn" id="playBtn" title="播放" aria-label="播放" aria-pressed="false"></button>
+        <button class="btn btn-red transport-btn" id="stopBtn" title="停止" aria-label="停止">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <rect x="7" y="7" width="10" height="10" rx="1.5"></rect>
+            </svg>
         </button>
-        <button class="btn btn-red" id="stopBtn">STOP</button>
 
-        <button class="btn btn-red" id="recordBtn" style="width: 32px; padding: 0;" title="MIDI Record">
-            <div style="width: 12px; height: 12px; background: #ff453a; border-radius: 50%; box-shadow: 0 0 5px #ff453a;"></div>
+        <button class="btn btn-red transport-btn" id="recordBtn" title="MIDI Record" aria-label="MIDI Record" aria-pressed="false">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <circle class="record-dot" cx="12" cy="12" r="5.5"></circle>
+            </svg>
+        </button>
+        <button class="btn transport-btn" id="metronomeToggleBtn" title="节拍器开关" aria-label="节拍器开关" aria-pressed="false">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M8 21h8"></path>
+                <path d="M10 21V8l2-4 2 4v13"></path>
+                <path d="M10 8h4"></path>
+                <path d="M14.5 6.5l2.5-2.5"></path>
+            </svg>
         </button>
 
         <div class="toolbar-separator"></div>
@@ -2256,6 +2543,7 @@
 
     <div id="ruler-container">
         <div id="ruler-header-spacer">
+            <button id="toggleTempoLaneBtn" title="显示或隐藏速度轨">Tempo</button>
             <button id="addTrackBtn" title="添加新轨道">+ 新建轨道</button>
         </div>
 
@@ -2263,6 +2551,21 @@
             <div id="ruler-playhead"></div>
             <div id="bar-ruler"></div>
             <div id="time-ruler"></div>
+        </div>
+    </div>
+
+    <div id="tempo-lane-row">
+        <div id="tempo-lane-label">
+            <strong>Tempo Track</strong>
+            <div id="tempo-lane-meta">右击 / 拖拽节点调整 BPM</div>
+        </div>
+        <div id="tempo-lane-viewport">
+            <div id="tempo-lane-content">
+                <svg id="tempo-lane-svg" preserveAspectRatio="none">
+                    <path id="tempo-lane-path" class="tempo-lane-line" d=""></path>
+                </svg>
+                <div id="tempo-lane-points"></div>
+            </div>
         </div>
     </div>
 
@@ -2614,11 +2917,24 @@
                 text-shadow: none;   /* 去掉可能的文字阴影 */
                 line-height: 1.2;
             ">
-                v2.2.0
+                v2.3.0
             </span>
         </h3>
 
         <div style="height: 250px; overflow-y: auto; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px; margin-bottom: 20px;">
+            <p style="color: #fff; font-weight: 700; font-size: 13px; margin-top: 0; border-left: 3px solid #30d158; padding-left: 8px;">
+                2026-05-04 v2.3.0
+            </p>
+            <ul style="padding-left: 20px; color: #ddd; line-height: 1.6; margin-bottom: 20px;">
+                <li>新增：节拍器功能，支持工具栏开关与 Woodblock / Click 两种音色切换。</li>
+                <li>新增：导入 MIDI 后自动解析 Tempo Map，节拍器与小节标尺现已支持跟随速度轨同步。</li>
+                <li>新增：上方轨道区支持 DAW 风格缩放操作，按 Command + 滚轮可横向缩放时间轴，按 Command + Option + 滚轮可纵向缩放轨道高度。</li>
+                <li>优化：播放 / 停止 / 录音 / 节拍器按钮改为极简图标样式，transport 区更紧凑。</li>
+                <li>优化：MIDI 设备接入诊断信息与热插拔重绑定逻辑，便于排查键盘识别问题。</li>
+            </ul>
+
+            <div style="height:1px; background:rgba(255,255,255,0.1); margin: 15px 0;"></div>
+
             <p style="color: #fff; font-weight: 700; font-size: 13px; margin-top: 0; border-left: 3px solid #ff453a; padding-left: 8px;">
                 2026-02-02 v2.2.0 (Performance Hotfix)
             </p>
@@ -2934,6 +3250,7 @@
     let previewAnimationId = null;
 
     let tempLoadedMaterial = null;
+    let midiAccessRef = null;
 
     function setStarfieldState(visible) {
         // 1. 设置 3D 星星粒子可见性
@@ -3012,7 +3329,8 @@
         currentTime: 0,         // 全局时间 (秒)
         lastFrameTime: 0,
         totalDuration: 60,      // 默认至少60秒
-        pxPerSec: 50,           // 时间轴缩放: 1秒 = 50px
+        pxPerSec: 50,           // 兼容旧工程：保留历史字段
+        pxPerBeat: 50,          // 时间轴缩放: 1拍 = 50px
         playbackSpeed: 20,     // 3D 场景速度系数 (与 zoomSlider 关联)
         noteThickness: 1.0,
         noteShape: 'capsule',
@@ -3023,6 +3341,30 @@
         audioGain: 1.5,
         bpm: 120,
         timeSignature: 4, // 4/4 拍
+        tempoMap: [
+            { time: 0, bpm: 120, beatStart: 0, secondsPerBeat: 0.5 }
+        ],
+        timeSignatureMap: [
+            { time: 0, numerator: 4, denominator: 4 }
+        ],
+        midiTiming: {
+            source: 'default',
+            trimOffset: 0,
+            hasTempoEvents: false
+        },
+        tempoLaneVisible: false,
+        selectedTempoPointId: null,
+        metronome: {
+            enabled: false,
+            sound: 'click',
+            volume: 0.7,
+            fallbackBpm: 120,
+            lookaheadSec: 0.12,
+            cursorTime: 0,
+            scheduledUntilAudioTime: 0,
+            lastScheduledBeatKey: null
+        },
+        trackRowHeight: 64,
         selectedTrackIds: new Set(),
         selectedClips: new Set(), // 🔥 新增：存储选中的 Clip 对象
         lastSelectedTrackId: null, // 🔥 新增：记录最后一次点击的轨道（锚点）
@@ -3055,8 +3397,25 @@
         barRuler: document.getElementById('bar-ruler'),
         timeRuler: document.getElementById('time-ruler'),
         rulerPlayhead: document.getElementById('ruler-playhead'), // 🔥 新增引用
-        recordBtn: document.getElementById('recordBtn')
+        toggleTempoLaneBtn: document.getElementById('toggleTempoLaneBtn'),
+        tempoLaneRow: document.getElementById('tempo-lane-row'),
+        tempoLaneMeta: document.getElementById('tempo-lane-meta'),
+        tempoLaneViewport: document.getElementById('tempo-lane-viewport'),
+        tempoLaneContent: document.getElementById('tempo-lane-content'),
+        tempoLaneSvg: document.getElementById('tempo-lane-svg'),
+        tempoLanePath: document.getElementById('tempo-lane-path'),
+        tempoLanePoints: document.getElementById('tempo-lane-points'),
+        recordBtn: document.getElementById('recordBtn'),
+        metronomeToggleBtn: document.getElementById('metronomeToggleBtn'),
+        metronomeMenu: document.getElementById('metronome-menu'),
+        metronomeSoundClickBtn: document.getElementById('met-sound-click'),
+        metronomeSoundWoodblockBtn: document.getElementById('met-sound-woodblock'),
+        metronomeBpmInput: document.getElementById('met-bpm-input'),
+        metronomeBpmDecBtn: document.getElementById('met-bpm-dec'),
+        metronomeBpmIncBtn: document.getElementById('met-bpm-inc')
     };
+
+    let tempoLaneDragState = null;
 
     const ResourceMgr = {
         audioCache: new Map(),
@@ -3496,6 +3855,7 @@
                 case 'import_tracks':
                     // 逻辑：Undo = 删除这些轨道 (但在删除前要保存数据以便 Redo); Redo = 恢复这些轨道
                     if (isUndo) {
+                        applyImportedTempoState(cmd, true);
                         // 🔥 修复：防止多次撤销导致 tracksData 无限重复堆叠
                         // 只有当 tracksData 为空时（第一次撤销），才执行序列化保存
                         if (!cmd.tracksData || cmd.tracksData.length === 0) {
@@ -3514,15 +3874,23 @@
                             const t = STATE.tracks.find(tr => tr.id === id);
                             if (t) deleteTrackContext(t);
                         });
+                        refreshTimelineForTempoState();
                     } else {
                         // Redo: 恢复
+                        applyImportedTempoState(cmd, false);
                         if (cmd.tracksData && cmd.tracksData.length > 0) {
                             cmd.tracksData.sort((a,b) => a.index - b.index).forEach(item => {
                                 ProjectMgr.restoreSingleTrack(item.data, item.index);
                             });
                             if (typeof reorderTracks === 'function') reorderTracks();
                         }
+                        refreshTimelineForTempoState();
                     }
+                    break;
+
+                case 'edit_tempo_map':
+                    restoreTempoState(isUndo ? cmd.oldTempoState : cmd.newTempoState);
+                    refreshTimelineForTempoState();
                     break;
 
                 case 'change_color':
@@ -4064,23 +4432,48 @@
 
     function initMidiAccess() {
         if (navigator.requestMIDIAccess) {
-            navigator.requestMIDIAccess().then(onMIDISuccess, onMIDIFailure);
+            navigator.requestMIDIAccess()
+                .then(onMIDISuccess)
+                .catch(onMIDIFailure);
         } else {
             console.warn("浏览器不支持 Web MIDI API");
         }
     }
 
-    function onMIDISuccess(midiAccess) {
+    function bindMidiInputs(midiAccess) {
         for (const input of midiAccess.inputs.values()) {
             input.onmidimessage = onMidiMessage;
+            console.log("MIDI 输入已绑定:", input.name, input.manufacturer || '');
         }
+    }
+
+    function onMIDISuccess(midiAccess) {
+        midiAccessRef = midiAccess;
+        bindMidiInputs(midiAccess);
         midiAccess.onstatechange = (e) => {
             console.log("MIDI 设备状态改变:", e.port.name, e.port.state);
+            if (e.port.type === 'input' && e.port.state === 'connected') {
+                bindMidiInputs(midiAccess);
+            }
         };
     }
 
-    function onMIDIFailure() {
-        console.warn("无法访问 MIDI 设备");
+    function onMIDIFailure(error) {
+        const debugInfo = {
+            isSecureContext: window.isSecureContext,
+            protocol: window.location?.protocol,
+            host: window.location?.host,
+            errorName: error?.name || 'UnknownError',
+            errorMessage: error?.message || 'No error message'
+        };
+
+        console.warn("无法访问 MIDI 设备", debugInfo);
+
+        if (!window.isSecureContext) {
+            console.warn("Web MIDI 需要安全上下文。请使用 localhost 或 HTTPS 打开页面。");
+        } else if (error?.name === 'SecurityError' || error?.name === 'NotAllowedError') {
+            console.warn("浏览器拒绝了 MIDI 权限，请检查站点 MIDI 权限或系统隐私设置。");
+        }
     }
 
     function onMidiMessage(event) {
@@ -4268,8 +4661,7 @@
         if (STATE.isRecording) {
             // === 停止录音 ===
             STATE.isRecording = false;
-            DOM.recordBtn.classList.remove('active-record');
-            DOM.recordBtn.style.background = "";
+            updateRecordButtonUI();
 
             // 停止所有正在响的音符
             STATE.activeMidiNotes.forEach((_, pitch) => stopRecordingNote(pitch));
@@ -4308,8 +4700,7 @@
             // 🔥 核心修改：记录点击录制那一刻的时间，作为新 Clip 的起点
             STATE.recordingStartTime = STATE.currentTime;
 
-            DOM.recordBtn.classList.add('active-record');
-            DOM.recordBtn.style.background = "rgba(255, 69, 58, 0.3)";
+            updateRecordButtonUI();
 
             if (!STATE.isPlaying) togglePlay();
         }
@@ -4935,10 +5326,10 @@
 
         updateDOMPosition() {
             if (!this.dom) return;
-            const width = this.duration * STATE.pxPerSec;
+            const width = getTimelineWidthBetweenTimes(this.startTime, this.startTime + this.duration);
             const height = 60; // 轨道高度，或者动态获取
 
-            this.dom.style.left = (this.startTime * STATE.pxPerSec) + 'px';
+            this.dom.style.left = getTimelineXAtTime(this.startTime) + 'px';
             this.dom.style.width = width + 'px';
 
             // 只有当宽度发生显著变化时才重绘，节省性能
@@ -4984,12 +5375,16 @@
             minPitch -= 2;
 
             ctx.fillStyle = color;
+            const clipStartBeat = getTimelineBeatAtTime(this.startTime);
+            const clipEndBeat = getTimelineBeatAtTime(this.startTime + this.duration);
+            const clipBeatSpan = Math.max(0.0001, clipEndBeat - clipStartBeat);
 
             // 2. 绘制每一个音符
             this.data.notes.forEach(note => {
-                // X轴：相对时间
-                const x = (note.time / this.duration) * width;
-                const w = (note.duration / this.duration) * width;
+                const noteStartBeat = getTimelineBeatAtTime(this.startTime + note.time) - clipStartBeat;
+                const noteEndBeat = getTimelineBeatAtTime(this.startTime + note.time + note.duration) - clipStartBeat;
+                const x = (noteStartBeat / clipBeatSpan) * width;
+                const w = ((noteEndBeat - noteStartBeat) / clipBeatSpan) * width;
 
                 // Y轴：音高 (高音在上，低音在下，Canvas 0 是顶部，所以要反过来)
                 // normalizedPitch: 0.0 ~ 1.0
@@ -5091,6 +5486,7 @@
                 initialStates.push({
                     clip: clip,
                     originalStart: clip.startTime,
+                    originalStartBeat: getTimelineBeatAtTime(clip.startTime),
                     dom: clip.dom
                 });
             });
@@ -5101,12 +5497,13 @@
             const onMove = (mv) => {
                 autoScroll(mv.clientY);
                 const deltaPx = mv.clientX - startX;
-                const deltaTime = deltaPx / STATE.pxPerSec;
+                const deltaBeat = deltaPx / getTimelinePixelsPerBeat();
 
                 // 🔥 3. 批量更新所有选中的 Clip
                 initialStates.forEach(state => {
-                    let newStart = state.originalStart + deltaTime;
-                    if (newStart < 0) newStart = 0; // 边界检查
+                    let newStartBeat = state.originalStartBeat + deltaBeat;
+                    if (newStartBeat < 0) newStartBeat = 0;
+                    const newStart = getTimelineTimeAtBeat(newStartBeat);
 
                     state.clip.startTime = newStart;
                     state.clip.updateDOMPosition();
@@ -5395,8 +5792,7 @@
                 // 1. 如果正在播放，停止全局播放状态
                 if (STATE.isPlaying) {
                     STATE.isPlaying = false;
-                    DOM.playBtn.innerText = "PLAY (Space)";
-                    DOM.playBtn.classList.remove('btn-primary');
+                    updatePlayButtonUI();
                 }
 
                 // 2. 清理 DOM Audio 元素 (停止发声)
@@ -6374,8 +6770,8 @@
             // 计算鼠标相对于容器左侧的偏移 + 容器当前的滚动距离
             const offsetX = e.clientX - rect.left + DOM.timelineLanes.scrollLeft;
 
-            // 转换为时间 (防止负数)
-            const time = Math.max(0, offsetX / STATE.pxPerSec);
+            // 转换为时间 (视觉坐标先按 beat，再映射回真实时间)
+            const time = getTimelineTimeAtOffsetX(offsetX);
 
             // 执行跳转
             seekTo(time);
@@ -6424,8 +6820,8 @@
         // ============================================================
         // 🔥 核心修复：基于轨道数量计算真实内容高度，而不是依赖 DOM scrollHeight
         // ============================================================
-        // 1. 获取轨道单行高度 (CSS .track-lane 定义为 64px)
-        const trackHeight = 64;
+        // 1. 获取轨道单行高度
+        const trackHeight = getTrackRowHeight();
 
         // 2. 计算所有轨道叠加的总高度
         const totalTrackHeight = STATE.tracks.length * trackHeight;
@@ -6612,22 +7008,24 @@
         const containerWidth = DOM.timelineLanes.clientWidth;
 
         // 计算理想比例：让内容占据约 90% 的宽度 (留一点余地)
-        let idealPxPerSec = (containerWidth * 0.9) / duration;
+        const totalBeats = Math.max(1, getTimelineBeatAtTime(duration));
+        let idealPxPerBeat = (containerWidth * 0.9) / totalBeats;
 
         // 限制范围在 Slider 的最小值(1)和最大值(200)之间
         // 你可以根据需要调整这里的 min/max
-        idealPxPerSec = Math.max(1, Math.min(200, idealPxPerSec));
+        idealPxPerBeat = Math.max(12, Math.min(200, idealPxPerBeat));
 
         // 应用数值
-        STATE.pxPerSec = idealPxPerSec;
+        setTimelinePixelsPerBeat(idealPxPerBeat);
 
         // 同步更新 Slider UI
         if (DOM.timelineZoom) {
-            DOM.timelineZoom.value = idealPxPerSec;
+            DOM.timelineZoom.value = idealPxPerBeat;
         }
 
         // 触发视图刷新
         updateGridBackground();
+        applyTrackRowHeight(STATE.trackRowHeight);
         updateTotalDuration(); // 这一步很重要，它会重算容器总宽
         STATE.clips.forEach(c => c.updateDOMPosition()); // 这一步重绘 Clip
         updatePlayhead();
@@ -6791,7 +7189,7 @@
             });
         }
 
-        const CURRENT_VERSION = '2.2.0'; // 👈 请确保这里与 HTML 标题一致
+        const CURRENT_VERSION = '2.3.0'; // 👈 请确保这里与 HTML 标题一致
         const STORAGE_KEY = 'mv_last_seen_version';
 
         // 读取本地存储的旧版本号
@@ -7174,6 +7572,7 @@
 
         // 🔥 1. 初始化时渲染标尺
         renderRulers();
+        setTempoLaneVisible(STATE.tempoLaneVisible);
 
         let isSyncing = false;
 
@@ -7185,6 +7584,7 @@
                     DOM.headers.scrollTop = DOM.timelineLanes.scrollTop;
                     // 水平同步上方标尺
                     DOM.rulerContent.scrollLeft = DOM.timelineLanes.scrollLeft;
+                    if (DOM.tempoLaneViewport) DOM.tempoLaneViewport.scrollLeft = DOM.timelineLanes.scrollLeft;
                     isSyncing = false;
                 });
                 isSyncing = true;
@@ -7221,7 +7621,7 @@
                 e.stopPropagation();
 
                 // --- 灵敏度设置 ---
-                // 建议：可以根据 STATE.pxPerSec 动态调整，这里暂时固定
+                // 建议：可以根据当前 beat 缩放动态调整，这里暂时固定
                 const sensitivity = 0.01;
 
                 // --- 滚轮数值读取 ---
@@ -7247,8 +7647,33 @@
             }
         };
 
+        const handleModifierTimelineZoom = (e) => {
+            if (!e.metaKey) return;
+
+            e.preventDefault();
+            e.stopPropagation();
+
+            const dominantDelta = Math.abs(e.deltaY) >= Math.abs(e.deltaX) ? e.deltaY : e.deltaX;
+
+            if (e.altKey) {
+                const nextTrackHeight = getTrackRowHeight() - (dominantDelta * 0.08);
+                applyTrackRowHeight(nextTrackHeight);
+                return;
+            }
+
+            const zoomFactor = Math.exp(-dominantDelta * 0.0025);
+            applyTimelineHorizontalZoom(getTimelinePixelsPerBeat() * zoomFactor, e.clientX);
+        };
+
         // 1. 绑定到时间轴区域 (保持原有功能)
         DOM.timelineLanes.addEventListener('wheel', handleShiftScrub, { passive: false });
+        DOM.timelineLanes.addEventListener('wheel', handleModifierTimelineZoom, { passive: false, capture: true });
+        DOM.headers.addEventListener('wheel', handleModifierTimelineZoom, { passive: false, capture: true });
+        DOM.rulerContent.addEventListener('wheel', handleModifierTimelineZoom, { passive: false, capture: true });
+        if (DOM.tempoLaneViewport) {
+            DOM.tempoLaneViewport.addEventListener('wheel', handleShiftScrub, { passive: false });
+            DOM.tempoLaneViewport.addEventListener('wheel', handleModifierTimelineZoom, { passive: false, capture: true });
+        }
 
         // 2. 🔥 绑定到 3D 可视化区域 (新增功能)
         // 关键点：使用 { capture: true } 开启捕获模式
@@ -7265,7 +7690,7 @@
             // 必须加上 scrollLeft，因为标尺是可以滚动的
             const offsetX = e.clientX - rect.left + DOM.rulerContent.scrollLeft;
 
-            const time = offsetX / STATE.pxPerSec;
+            const time = getTimelineTimeAtOffsetX(offsetX);
             seekTo(time);
 
             // (可选) 如果你想支持“在标尺上拖动 scrubbing”
@@ -7275,6 +7700,123 @@
         // 事件监听
         DOM.playBtn.addEventListener('click', togglePlay);
         DOM.stopBtn.addEventListener('click', stopPlay);
+        if (DOM.toggleTempoLaneBtn) {
+            DOM.toggleTempoLaneBtn.addEventListener('click', () => {
+                setTempoLaneVisible(!STATE.tempoLaneVisible);
+            });
+        }
+        DOM.metronomeToggleBtn.addEventListener('click', toggleMetronomeEnabled);
+        DOM.metronomeToggleBtn.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            showMetronomeMenu(e.clientX, e.clientY);
+        });
+        DOM.metronomeSoundClickBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            setMetronomeSound('click');
+        });
+        DOM.metronomeSoundWoodblockBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            setMetronomeSound('woodblock');
+        });
+        DOM.metronomeBpmDecBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            setMetronomeFallbackBpm((STATE.metronome?.fallbackBpm ?? 120) - 1);
+        });
+        DOM.metronomeBpmIncBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            setMetronomeFallbackBpm((STATE.metronome?.fallbackBpm ?? 120) + 1);
+        });
+        DOM.metronomeBpmInput.addEventListener('input', (e) => {
+            e.stopPropagation();
+            setMetronomeFallbackBpm(e.target.value);
+        });
+        DOM.metronomeBpmInput.addEventListener('click', (e) => e.stopPropagation());
+        DOM.metronomeMenu.addEventListener('click', (e) => e.stopPropagation());
+        DOM.metronomeMenu.addEventListener('contextmenu', (e) => e.stopPropagation());
+
+        if (DOM.tempoLaneContent) {
+            DOM.tempoLaneContent.addEventListener('mousedown', (e) => {
+                if (!STATE.tempoLaneVisible || e.button !== 0) return;
+
+                const handle = e.target.closest('.tempo-lane-handle');
+                const rect = DOM.tempoLaneContent.getBoundingClientRect();
+                const offsetX = e.clientX - rect.left;
+                const offsetY = e.clientY - rect.top;
+                const laneHeight = DOM.tempoLaneContent.clientHeight || 74;
+                const bpmRange = getTempoLaneBpmRange(getEffectiveTempoMap());
+
+                if (!handle) {
+                    const nextTime = getTimelineTimeAtOffsetX(offsetX);
+                    const nextBpm = getBpmFromTempoLaneY(offsetY, laneHeight, bpmRange);
+                    const nextMap = insertTempoPointAtTime(nextTime, nextBpm, STATE.tempoMap);
+                    let selectedIndex = nextMap.findIndex((point) => Math.abs(point.time - nextTime) < 1e-6 && Math.abs(point.bpm - nextBpm) < 1e-6);
+                    if (selectedIndex < 0) {
+                        selectedIndex = nextMap.findIndex((point, index, list) => {
+                            const prev = list[index - 1];
+                            return point.time >= nextTime && (!prev || prev.time < nextTime);
+                        });
+                    }
+                    if (selectedIndex < 0) selectedIndex = Math.max(0, nextMap.length - 1);
+                    commitTempoMapChange(nextMap, { selectedIndex });
+                    return;
+                }
+
+                e.preventDefault();
+                const pointIndex = Number(handle.dataset.tempoPointIndex);
+                if (!Number.isInteger(pointIndex) || pointIndex < 0) return;
+
+                STATE.selectedTempoPointId = handle.dataset.tempoPointId || `tempo-point-${pointIndex}`;
+                renderTempoLane();
+
+                tempoLaneDragState = {
+                    pointIndex,
+                    oldTempoState: cloneTempoState()
+                };
+            });
+        }
+
+        window.addEventListener('mousemove', (e) => {
+            if (!tempoLaneDragState || !STATE.tempoLaneVisible || !DOM.tempoLaneContent) return;
+
+            e.preventDefault();
+
+            const rect = DOM.tempoLaneContent.getBoundingClientRect();
+            const laneHeight = DOM.tempoLaneContent.clientHeight || 74;
+            const bpmRange = getTempoLaneBpmRange(getEffectiveTempoMap());
+            const currentMap = normalizeEditableTempoMap(STATE.tempoMap);
+            const pointIndex = tempoLaneDragState.pointIndex;
+            const prevPoint = currentMap[pointIndex - 1];
+            const nextPoint = currentMap[pointIndex + 1];
+
+            let nextTime = getTimelineTimeAtOffsetX(e.clientX - rect.left);
+            if (pointIndex === 0) {
+                nextTime = 0;
+            } else {
+                const minTime = prevPoint ? prevPoint.time + 0.01 : 0;
+                const maxTime = nextPoint ? nextPoint.time - 0.01 : STATE.totalDuration;
+                nextTime = Math.max(minTime, Math.min(maxTime, nextTime));
+            }
+
+            const nextBpm = getBpmFromTempoLaneY(e.clientY - rect.top, laneHeight, bpmRange);
+            const nextMap = moveTempoPoint(pointIndex, nextTime, nextBpm, STATE.tempoMap);
+            applyTempoMapState(nextMap, { selectedIndex: pointIndex });
+        });
+
+        window.addEventListener('mouseup', () => {
+            if (!tempoLaneDragState) return;
+
+            const newTempoState = cloneTempoState();
+            if (JSON.stringify(tempoLaneDragState.oldTempoState) !== JSON.stringify(newTempoState)) {
+                HistoryMgr.add({
+                    type: 'edit_tempo_map',
+                    oldTempoState: tempoLaneDragState.oldTempoState,
+                    newTempoState
+                });
+            }
+
+            tempoLaneDragState = null;
+        });
 
         // ✅ 绑定新的 Input 逻辑
         document.getElementById('midiInput').addEventListener('change', (e) => processMidiFile(e.target.files[0]));
@@ -7284,6 +7826,10 @@
         document.getElementById('bgInput').addEventListener('change', (e) => {
             processBackgroundFile(e.target.files[0]);
         });
+
+        updatePlayButtonUI();
+        updateRecordButtonUI();
+        updateMetronomeUI();
 
         // 1. Thickness 滑块
         document.getElementById('thicknessSlider').addEventListener('input', (e) => {
@@ -7363,7 +7909,7 @@
 
             const rect = DOM.timelineLanes.getBoundingClientRect();
             const offsetX = e.clientX - rect.left + DOM.timelineLanes.scrollLeft;
-            const time = offsetX / STATE.pxPerSec;
+            const time = getTimelineTimeAtOffsetX(offsetX);
             seekTo(time);
         });
 
@@ -7409,6 +7955,10 @@
             }
 
             if (e.code === 'Escape') {
+                if (STATE.selectedTempoPointId) {
+                    setSelectedTempoPointId(null);
+                }
+
                 // 1. 定义所有弹窗的 ID 列表
                 const modalIds = [
                     'export-modal',
@@ -7505,6 +8055,10 @@
 
             if (e.code === 'Backspace' || e.code === 'Delete') {
                 e.preventDefault();
+
+                if (deleteSelectedTempoPoint()) {
+                    return;
+                }
 
                 // 🔥 优先处理：删除选中的 MIDI 事件 (Clips)
                 if (STATE.selectedClips.size > 0) {
@@ -7733,18 +8287,18 @@
 
         // 隐藏菜单 (点击空白处)
         window.addEventListener('click', () => {
-            menu.style.display = 'none';
+            hideFloatingMenus();
         });
 
         // 绑定菜单动作
         menuGroup.addEventListener('click', () => {
             createGroupForSelection();
-            menu.style.display = 'none';
+            hideFloatingMenus();
         });
 
         menuUngroup.addEventListener('click', () => {
             ungroupSelection();
-            menu.style.display = 'none';
+            hideFloatingMenus();
         });
 
         initMidiAccess();
@@ -8226,35 +8780,49 @@
         });
     }
 
-    // 辅助：显示菜单 (已优化边界检测)
-    function showContextMenu(x, y) {
-        const menu = document.getElementById('context-menu');
+    function hideFloatingMenus() {
+        if (DOM.metronomeMenu) DOM.metronomeMenu.style.display = 'none';
+        const contextMenu = document.getElementById('context-menu');
+        if (contextMenu) contextMenu.style.display = 'none';
+    }
 
-        // 先显示出来，才能获取到它的宽度和高度
+    function showFloatingMenu(menu, x, y) {
+        if (!menu) return;
+        hideFloatingMenus();
+
         menu.style.display = 'block';
 
-        // 获取菜单尺寸和窗口尺寸
         const rect = menu.getBoundingClientRect();
         const winWidth = window.innerWidth;
         const winHeight = window.innerHeight;
+        let nextX = x;
+        let nextY = y;
 
-        // 1. 防止超出右边界：如果 鼠标X + 菜单宽 > 屏幕宽，则菜单显示在鼠标左侧
-        if (x + rect.width > winWidth) {
-            x -= rect.width;
+        if (nextX + rect.width > winWidth) {
+            nextX = Math.max(8, nextX - rect.width);
+        }
+        if (nextY + rect.height > winHeight) {
+            nextY = Math.max(8, nextY - rect.height);
         }
 
-        // 2. 防止超出下边界：如果 鼠标Y + 菜单高 > 屏幕高，则菜单显示在鼠标上方
-        if (y + rect.height > winHeight) {
-            y -= rect.height;
-        }
+        menu.style.left = nextX + 'px';
+        menu.style.top = nextY + 'px';
+    }
 
-        menu.style.left = x + 'px';
-        menu.style.top = y + 'px';
+    // 辅助：显示菜单 (已优化边界检测)
+    function showContextMenu(x, y) {
+        showFloatingMenu(document.getElementById('context-menu'), x, y);
+    }
+
+    function showMetronomeMenu(x, y) {
+        updateMetronomeUI();
+        showFloatingMenu(DOM.metronomeMenu, x, y);
     }
 
     function updateGridBackground() {
-        // 更新 CSS grid 背景大小以匹配 1秒的像素数
-        DOM.grid.style.backgroundSize = `${STATE.pxPerSec}px 100%`;
+        // 用细密的点阵保持空间感，真正的拍线/小节线由 renderRulers() 生成
+        const beatWidth = Math.max(16, getTimelinePixelsPerBeat() * 0.5);
+        DOM.timelineLanes.style.backgroundSize = `${beatWidth}px 24px`;
     }
 
     // 🔥 新增辅助函数：直接从二进制数据中扫描轨道名称
@@ -8340,29 +8908,808 @@
         return names;
     }
 
+    function buildTempoMap(tempos, fallbackBpm, trimOffset = 0) {
+        const safeFallbackBpm = Number.isFinite(fallbackBpm) && fallbackBpm > 0 ? fallbackBpm : 120;
+        const normalizedInput = Array.isArray(tempos) ? tempos
+            .map((event) => ({
+                time: Math.max(0, (Number(event?.time) || 0) - trimOffset),
+                bpm: Number(event?.bpm)
+            }))
+            .filter((event) => Number.isFinite(event.bpm) && event.bpm > 0)
+            .sort((a, b) => a.time - b.time) : [];
+
+        const deduped = [];
+        for (const event of normalizedInput) {
+            const last = deduped[deduped.length - 1];
+            if (last && Math.abs(last.time - event.time) < 1e-9) {
+                last.bpm = event.bpm;
+            } else {
+                deduped.push({ time: event.time, bpm: event.bpm });
+            }
+        }
+
+        if (deduped.length === 0) {
+            deduped.push({ time: 0, bpm: safeFallbackBpm });
+        } else if (deduped[0].time > 0) {
+            deduped.unshift({ time: 0, bpm: safeFallbackBpm });
+        }
+
+        return deduped.map((event, index) => {
+            const secondsPerBeat = 60 / event.bpm;
+            let beatStart = 0;
+
+            if (index > 0) {
+                const prev = deduped[index - 1];
+                beatStart = prev.beatStart + ((event.time - prev.time) / prev.secondsPerBeat);
+            }
+
+            const segment = {
+                time: event.time,
+                bpm: event.bpm,
+                secondsPerBeat,
+                beatStart
+            };
+
+            deduped[index] = segment;
+            return segment;
+        });
+    }
+
+    function buildTimeSignatureMap(timeSignatures, fallbackNumerator, trimOffset = 0) {
+        const safeFallbackNumerator = Number.isFinite(fallbackNumerator) && fallbackNumerator > 0 ? fallbackNumerator : 4;
+        const normalizedInput = Array.isArray(timeSignatures) ? timeSignatures
+            .map((event) => {
+                const rawSignature = Array.isArray(event?.timeSignature) ? event.timeSignature : [];
+                const numerator = Number(rawSignature[0] ?? event?.numerator ?? safeFallbackNumerator);
+                const denominator = Number(rawSignature[1] ?? event?.denominator ?? 4);
+
+                return {
+                    time: Math.max(0, (Number(event?.time) || 0) - trimOffset),
+                    numerator,
+                    denominator
+                };
+            })
+            .filter((event) =>
+                Number.isFinite(event.numerator) && event.numerator > 0 &&
+                Number.isFinite(event.denominator) && event.denominator > 0
+            )
+            .sort((a, b) => a.time - b.time) : [];
+
+        const deduped = [];
+        for (const event of normalizedInput) {
+            const last = deduped[deduped.length - 1];
+            if (last && Math.abs(last.time - event.time) < 1e-9) {
+                last.numerator = event.numerator;
+                last.denominator = event.denominator;
+            } else {
+                deduped.push(event);
+            }
+        }
+
+        if (deduped.length === 0) {
+            deduped.push({ time: 0, numerator: safeFallbackNumerator, denominator: 4 });
+        } else if (deduped[0].time > 0) {
+            deduped.unshift({ time: 0, numerator: safeFallbackNumerator, denominator: 4 });
+        }
+
+        return deduped;
+    }
+
+    function getTempoSegmentAtTime(time, tempoMap = STATE.tempoMap) {
+        if (!Array.isArray(tempoMap) || tempoMap.length === 0) {
+            const bpm = Number.isFinite(STATE?.bpm) && STATE.bpm > 0 ? STATE.bpm : 120;
+            return { time: 0, bpm, beatStart: 0, secondsPerBeat: 60 / bpm };
+        }
+
+        const targetTime = Number.isFinite(time) ? time : 0;
+        for (let i = tempoMap.length - 1; i >= 0; i--) {
+            if (targetTime >= tempoMap[i].time - 1e-9) return tempoMap[i];
+        }
+
+        return tempoMap[0];
+    }
+
+    function getBeatPositionAtTime(time, tempoMap = STATE.tempoMap) {
+        const segment = getTempoSegmentAtTime(time, tempoMap);
+        const delta = Math.max(0, (Number.isFinite(time) ? time : 0) - segment.time);
+        return segment.beatStart + (delta / segment.secondsPerBeat);
+    }
+
+    function getTimeAtBeat(beat, tempoMap = STATE.tempoMap) {
+        if (!Array.isArray(tempoMap) || tempoMap.length === 0) return 0;
+        const targetBeat = Number.isFinite(beat) ? Math.max(0, beat) : 0;
+
+        for (let i = tempoMap.length - 1; i >= 0; i--) {
+            const segment = tempoMap[i];
+            if (targetBeat >= segment.beatStart - 1e-9) {
+                return segment.time + ((targetBeat - segment.beatStart) * segment.secondsPerBeat);
+            }
+        }
+
+        return tempoMap[0].time;
+    }
+
+    function getNextBeatAfter(time, tempoMap = STATE.tempoMap) {
+        const beatPosition = getBeatPositionAtTime(time, tempoMap);
+        const nextWholeBeat = Math.floor(beatPosition + 1e-9) + 1;
+        return getTimeAtBeat(nextWholeBeat, tempoMap);
+    }
+
+    function getBarBeatAtTime(time, tempoMap = STATE.tempoMap, timeSignatureMap = STATE.timeSignatureMap) {
+        const currentBeat = getBeatPositionAtTime(time, tempoMap);
+        const beatIndex = Math.floor(currentBeat + 1e-9);
+        const signatures = Array.isArray(timeSignatureMap) && timeSignatureMap.length > 0
+            ? timeSignatureMap
+            : [{ time: 0, numerator: STATE.timeSignature || 4, denominator: 4 }];
+
+        let completedBars = 0;
+
+        for (let i = 0; i < signatures.length; i++) {
+            const signature = signatures[i];
+            const nextSignature = signatures[i + 1];
+            const segmentBeatStart = getBeatPositionAtTime(signature.time, tempoMap);
+            const nextBeatStart = nextSignature ? getBeatPositionAtTime(nextSignature.time, tempoMap) : Infinity;
+
+            if (currentBeat >= nextBeatStart - 1e-9) {
+                const beatsInSegment = Math.max(0, Math.floor(nextBeatStart - segmentBeatStart + 1e-9));
+                completedBars += Math.floor(beatsInSegment / signature.numerator);
+                continue;
+            }
+
+            const localBeatIndex = Math.max(0, beatIndex - Math.floor(segmentBeatStart + 1e-9));
+            return {
+                bar: completedBars + Math.floor(localBeatIndex / signature.numerator) + 1,
+                beatInBar: (localBeatIndex % signature.numerator) + 1,
+                beatIndex
+            };
+        }
+
+        return {
+            bar: 1,
+            beatInBar: 1,
+            beatIndex
+        };
+    }
+
+    function getTimeSignatureAtTime(time, timeSignatureMap = STATE.timeSignatureMap) {
+        const signatures = Array.isArray(timeSignatureMap) && timeSignatureMap.length > 0
+            ? timeSignatureMap
+            : [{ time: 0, numerator: STATE.timeSignature || 4, denominator: 4 }];
+        const targetTime = Number.isFinite(time) ? time : 0;
+
+        for (let i = signatures.length - 1; i >= 0; i--) {
+            if (targetTime >= signatures[i].time - 1e-9) return signatures[i];
+        }
+
+        return signatures[0];
+    }
+
+    function getEffectiveTempoMap() {
+        if (STATE.midiTiming?.hasTempoEvents && Array.isArray(STATE.tempoMap) && STATE.tempoMap.length > 0) {
+            return STATE.tempoMap;
+        }
+
+        const fallbackBpm = Number.isFinite(STATE.metronome?.fallbackBpm) ? STATE.metronome.fallbackBpm : STATE.bpm;
+        return buildTempoMap([], fallbackBpm, 0);
+    }
+
+    function cloneTempoState() {
+        return {
+            tempoMap: JSON.parse(JSON.stringify(STATE.tempoMap || [])),
+            timeSignatureMap: JSON.parse(JSON.stringify(STATE.timeSignatureMap || [])),
+            midiTiming: JSON.parse(JSON.stringify(STATE.midiTiming || {})),
+            bpm: STATE.bpm,
+            tempoLaneVisible: !!STATE.tempoLaneVisible
+        };
+    }
+
+    function restoreTempoState(snapshot) {
+        snapshot = snapshot || {};
+        STATE.tempoMap = JSON.parse(JSON.stringify(snapshot.tempoMap || []));
+        STATE.timeSignatureMap = JSON.parse(JSON.stringify(snapshot.timeSignatureMap || []));
+        STATE.midiTiming = JSON.parse(JSON.stringify(snapshot.midiTiming || {
+            source: 'default',
+            trimOffset: 0,
+            hasTempoEvents: false
+        }));
+        if (!Array.isArray(STATE.tempoMap) || STATE.tempoMap.length === 0) {
+            STATE.tempoMap = buildTempoMap([], STATE.bpm, 0);
+        }
+        if (!Array.isArray(STATE.timeSignatureMap) || STATE.timeSignatureMap.length === 0) {
+            STATE.timeSignatureMap = buildTimeSignatureMap([], STATE.timeSignature, 0);
+        }
+        STATE.bpm = Number.isFinite(snapshot.bpm) ? snapshot.bpm : (STATE.tempoMap[0]?.bpm || STATE.bpm || 120);
+        STATE.tempoLaneVisible = !!snapshot.tempoLaneVisible;
+        STATE.selectedTempoPointId = null;
+    }
+
+    function applyImportedTempoState(cmd, isUndo) {
+        const snapshot = isUndo ? cmd.oldTempoState : cmd.newTempoState;
+        restoreTempoState(snapshot);
+    }
+
+    function normalizeEditableTempoMap(tempoMap = []) {
+        const normalized = Array.isArray(tempoMap) ? tempoMap
+            .map((point) => ({
+                time: Math.max(0, Number(point?.time) || 0),
+                bpm: Math.max(20, Math.min(300, Number(point?.bpm) || 120))
+            }))
+            .sort((a, b) => a.time - b.time) : [];
+
+        if (normalized.length === 0) {
+            normalized.push({ time: 0, bpm: Number.isFinite(STATE?.bpm) ? STATE.bpm : 120 });
+        }
+
+        normalized[0].time = 0;
+
+        const deduped = [];
+        normalized.forEach((point) => {
+            const last = deduped[deduped.length - 1];
+            if (last && Math.abs(last.time - point.time) < 1e-9) {
+                last.bpm = point.bpm;
+            } else {
+                deduped.push(point);
+            }
+        });
+
+        return deduped;
+    }
+
+    function insertTempoPointAtTime(time, bpm, tempoMap = STATE.tempoMap) {
+        const nextMap = Array.isArray(tempoMap) ? tempoMap.map((point) => ({ time: point.time, bpm: point.bpm })) : [];
+        nextMap.push({ time, bpm });
+        return normalizeEditableTempoMap(nextMap);
+    }
+
+    function moveTempoPoint(pointIndex, nextTime, nextBpm, tempoMap = STATE.tempoMap) {
+        const nextMap = Array.isArray(tempoMap) ? tempoMap.map((point) => ({ time: point.time, bpm: point.bpm })) : [];
+        if (!nextMap[pointIndex]) return normalizeEditableTempoMap(nextMap);
+        nextMap[pointIndex] = {
+            time: pointIndex === 0 ? 0 : nextTime,
+            bpm: nextBpm
+        };
+        return normalizeEditableTempoMap(nextMap);
+    }
+
+    function removeTempoPoint(pointIndex, tempoMap = STATE.tempoMap) {
+        const nextMap = Array.isArray(tempoMap) ? tempoMap.map((point) => ({ time: point.time, bpm: point.bpm })) : [];
+        if (pointIndex <= 0 || pointIndex >= nextMap.length) return normalizeEditableTempoMap(nextMap);
+        nextMap.splice(pointIndex, 1);
+        return normalizeEditableTempoMap(nextMap);
+    }
+
+    function getTempoPointScreenY(bpm, laneHeight, bpmRange) {
+        bpmRange = bpmRange || { min: 40, max: 240 };
+        const minBpm = Number.isFinite(bpmRange?.min) ? bpmRange.min : 40;
+        const maxBpm = Number.isFinite(bpmRange?.max) ? bpmRange.max : 240;
+        const clampedBpm = Math.max(minBpm, Math.min(maxBpm, Number(bpm) || minBpm));
+        const normalized = (clampedBpm - minBpm) / Math.max(1, maxBpm - minBpm);
+        const innerHeight = Math.max(1, laneHeight - 12);
+        return 6 + ((1 - normalized) * innerHeight);
+    }
+
+    function getBpmFromTempoLaneY(offsetY, laneHeight, bpmRange) {
+        bpmRange = bpmRange || { min: 40, max: 240 };
+        const minBpm = Number.isFinite(bpmRange?.min) ? bpmRange.min : 40;
+        const maxBpm = Number.isFinite(bpmRange?.max) ? bpmRange.max : 240;
+        const innerHeight = Math.max(1, laneHeight - 12);
+        const clampedY = Math.max(6, Math.min(laneHeight - 6, Number(offsetY) || 6));
+        const normalized = 1 - ((clampedY - 6) / innerHeight);
+        return Math.round(minBpm + (normalized * (maxBpm - minBpm)));
+    }
+
+    function collectTempoLaneRenderPoints(laneHeight = 56, bpmRange, tempoMap = getEffectiveTempoMap()) {
+        bpmRange = bpmRange || { min: 40, max: 240 };
+        const editablePoints = normalizeEditableTempoMap(tempoMap);
+        return editablePoints.map((point, index) => ({
+            id: `tempo-point-${index}`,
+            index,
+            time: point.time,
+            bpm: point.bpm,
+            x: Math.round(getTimelineXAtTime(point.time)),
+            y: Math.round(getTempoPointScreenY(point.bpm, laneHeight, bpmRange)),
+            label: `${Math.round(point.bpm)} BPM`
+        }));
+    }
+
+    function getTempoLaneBpmRange(tempoMap) {
+        const points = normalizeEditableTempoMap(tempoMap || getEffectiveTempoMap());
+        const bpms = points.map((point) => point.bpm);
+        let minBpm = Math.min(...bpms);
+        let maxBpm = Math.max(...bpms);
+
+        minBpm = Math.max(20, Math.floor((minBpm - 16) / 10) * 10);
+        maxBpm = Math.min(300, Math.ceil((maxBpm + 16) / 10) * 10);
+
+        if ((maxBpm - minBpm) < 40) {
+            const center = (minBpm + maxBpm) / 2;
+            minBpm = Math.max(20, Math.floor((center - 20) / 10) * 10);
+            maxBpm = Math.min(300, Math.ceil((center + 20) / 10) * 10);
+        }
+
+        return { min: minBpm, max: maxBpm };
+    }
+
+    function buildTempoLanePath(points, totalWidth) {
+        if (!Array.isArray(points) || points.length === 0) return '';
+
+        let path = `M ${points[0].x} ${points[0].y}`;
+        for (let i = 1; i < points.length; i++) {
+            path += ` H ${points[i].x} V ${points[i].y}`;
+        }
+
+        path += ` H ${Math.max(points[points.length - 1].x, totalWidth)}`;
+        return path;
+    }
+
+    function getSelectedTempoPointIndex() {
+        const matched = /tempo-point-(\d+)$/.exec(STATE.selectedTempoPointId || '');
+        return matched ? Number(matched[1]) : -1;
+    }
+
+    function setSelectedTempoPointId(pointId) {
+        STATE.selectedTempoPointId = pointId || null;
+        renderTempoLane();
+    }
+
+    function setTempoLaneVisible(nextVisible) {
+        STATE.tempoLaneVisible = !!nextVisible;
+        if (DOM.tempoLaneRow) {
+            DOM.tempoLaneRow.classList.toggle('visible', STATE.tempoLaneVisible);
+        }
+        if (DOM.toggleTempoLaneBtn) {
+            DOM.toggleTempoLaneBtn.classList.toggle('active', STATE.tempoLaneVisible);
+            DOM.toggleTempoLaneBtn.setAttribute('aria-pressed', STATE.tempoLaneVisible ? 'true' : 'false');
+            DOM.toggleTempoLaneBtn.title = STATE.tempoLaneVisible ? '隐藏速度轨' : '显示速度轨';
+        }
+        if (DOM.tempoLaneViewport && DOM.timelineLanes) {
+            DOM.tempoLaneViewport.scrollLeft = DOM.timelineLanes.scrollLeft;
+        }
+        if (STATE.tempoLaneVisible) {
+            renderTempoLane();
+        }
+    }
+
+    function refreshTimelineForTempoState() {
+        updateTotalDuration();
+        STATE.clips.forEach((clip) => clip.updateDOMPosition());
+        updatePlayhead();
+        setTempoLaneVisible(STATE.tempoLaneVisible);
+    }
+
+    function applyTempoMapState(nextTempoMap, options) {
+        options = options || {};
+
+        const editableMap = normalizeEditableTempoMap(nextTempoMap);
+        STATE.tempoMap = buildTempoMap(
+            editableMap.map((point) => ({ time: point.time, bpm: point.bpm })),
+            editableMap[0]?.bpm || STATE.bpm || 120,
+            0
+        );
+        STATE.bpm = Math.round(STATE.tempoMap[0]?.bpm || STATE.bpm || 120);
+        STATE.midiTiming = {
+            ...(STATE.midiTiming || {}),
+            source: STATE.midiTiming?.source || 'tempo-lane',
+            hasTempoEvents: true
+        };
+
+        if (Number.isInteger(options.selectedIndex)) {
+            STATE.selectedTempoPointId = `tempo-point-${Math.max(0, Math.min(options.selectedIndex, STATE.tempoMap.length - 1))}`;
+        } else if (STATE.selectedTempoPointId) {
+            const currentIndex = getSelectedTempoPointIndex();
+            STATE.selectedTempoPointId = currentIndex >= 0 && currentIndex < STATE.tempoMap.length
+                ? `tempo-point-${currentIndex}`
+                : null;
+        }
+
+        resetMetronomeSchedule(STATE.currentTime);
+        refreshTimelineForTempoState();
+    }
+
+    function commitTempoMapChange(nextTempoMap, options) {
+        options = options || {};
+        const oldTempoState = cloneTempoState();
+        applyTempoMapState(nextTempoMap, options);
+        const newTempoState = cloneTempoState();
+
+        if (JSON.stringify(oldTempoState) !== JSON.stringify(newTempoState)) {
+            HistoryMgr.add({
+                type: 'edit_tempo_map',
+                oldTempoState,
+                newTempoState
+            });
+        }
+    }
+
+    function deleteSelectedTempoPoint() {
+        const index = getSelectedTempoPointIndex();
+        if (index <= 0) return false;
+
+        const nextMap = removeTempoPoint(index, STATE.tempoMap);
+        commitTempoMapChange(nextMap, { selectedIndex: Math.max(0, index - 1) });
+        return true;
+    }
+
+    function renderTempoLane() {
+        if (!DOM.tempoLaneRow || !DOM.tempoLaneContent || !DOM.tempoLaneSvg || !DOM.tempoLanePoints) return;
+
+        DOM.tempoLaneRow.classList.toggle('visible', !!STATE.tempoLaneVisible);
+        if (!STATE.tempoLaneVisible) return;
+
+        const totalWidth = Math.max(
+            DOM.timelineLanes?.clientWidth || 0,
+            Number.parseFloat(DOM.lanes?.style.width || '0') || 0,
+            (STATE.totalTimelineBeats || 0) * getTimelinePixelsPerBeat()
+        );
+        const laneHeight = DOM.tempoLaneContent.clientHeight || 74;
+        const bpmRange = getTempoLaneBpmRange(getEffectiveTempoMap());
+        const points = collectTempoLaneRenderPoints(laneHeight, bpmRange, STATE.tempoMap);
+        const metaLabel = (STATE.midiTiming?.source === 'default' || STATE.midiTiming?.source === 'tempo-lane')
+            ? 'Manual Tempo'
+            : 'MIDI Tempo Map';
+
+        DOM.tempoLaneContent.style.width = `${totalWidth}px`;
+        DOM.tempoLaneContent.style.minWidth = `${totalWidth}px`;
+        DOM.tempoLaneSvg.setAttribute('viewBox', `0 0 ${Math.max(1, totalWidth)} ${Math.max(1, laneHeight)}`);
+        DOM.tempoLaneSvg.setAttribute('width', `${totalWidth}`);
+        DOM.tempoLaneSvg.setAttribute('height', `${laneHeight}`);
+
+        DOM.tempoLaneSvg.querySelectorAll('.tempo-lane-guide').forEach((line) => line.remove());
+        [bpmRange.min, Math.round((bpmRange.min + bpmRange.max) / 2), bpmRange.max].forEach((bpm) => {
+            const guide = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            guide.setAttribute('class', 'tempo-lane-guide');
+            guide.setAttribute('x1', '0');
+            guide.setAttribute('x2', `${totalWidth}`);
+            guide.setAttribute('y1', `${Math.round(getTempoPointScreenY(bpm, laneHeight, bpmRange))}`);
+            guide.setAttribute('y2', `${Math.round(getTempoPointScreenY(bpm, laneHeight, bpmRange))}`);
+            DOM.tempoLaneSvg.insertBefore(guide, DOM.tempoLanePath);
+        });
+        DOM.tempoLanePath.setAttribute('d', buildTempoLanePath(points, totalWidth));
+
+        DOM.tempoLanePoints.innerHTML = '';
+        points.forEach((point) => {
+            const label = document.createElement('div');
+            label.className = 'tempo-lane-tag';
+            label.style.left = `${point.x}px`;
+            label.style.top = `${point.y}px`;
+            label.textContent = point.label;
+            DOM.tempoLanePoints.appendChild(label);
+
+            const handle = document.createElement('button');
+            handle.type = 'button';
+            handle.className = `tempo-lane-handle${STATE.selectedTempoPointId === point.id ? ' selected' : ''}`;
+            handle.dataset.tempoPointId = point.id;
+            handle.dataset.tempoPointIndex = String(point.index);
+            handle.style.left = `${point.x}px`;
+            handle.style.top = `${point.y}px`;
+            handle.title = point.label;
+            handle.setAttribute('aria-label', point.label);
+            DOM.tempoLanePoints.appendChild(handle);
+        });
+
+        if (DOM.tempoLaneMeta) {
+            DOM.tempoLaneMeta.textContent = `${metaLabel} · ${points.length} 点 · ${bpmRange.min}-${bpmRange.max} BPM`;
+        }
+    }
+
+    function getTimelinePixelsPerBeat() {
+        if (Number.isFinite(STATE?.pxPerBeat) && STATE.pxPerBeat > 0) return STATE.pxPerBeat;
+        if (Number.isFinite(STATE?.pxPerSec) && STATE.pxPerSec > 0) return STATE.pxPerSec;
+        return 50;
+    }
+
+    function setTimelinePixelsPerBeat(nextPxPerBeat) {
+        const safeValue = Math.max(10, Math.min(320, Number(nextPxPerBeat) || 50));
+        STATE.pxPerBeat = safeValue;
+        STATE.pxPerSec = safeValue;
+    }
+
+    function getTimelineBeatAtTime(time, tempoMap = getEffectiveTempoMap()) {
+        return getBeatPositionAtTime(time, tempoMap);
+    }
+
+    function getTimelineTimeAtBeat(beat, tempoMap = getEffectiveTempoMap()) {
+        return getTimeAtBeat(beat, tempoMap);
+    }
+
+    function getTimelineXAtTime(time, pxPerBeat = getTimelinePixelsPerBeat(), tempoMap = getEffectiveTempoMap()) {
+        return getTimelineBeatAtTime(time, tempoMap) * pxPerBeat;
+    }
+
+    function getTimelineTimeAtOffsetX(offsetX, pxPerBeat = getTimelinePixelsPerBeat(), tempoMap = getEffectiveTempoMap()) {
+        const beat = Math.max(0, (Number.isFinite(offsetX) ? offsetX : 0) / pxPerBeat);
+        return getTimelineTimeAtBeat(beat, tempoMap);
+    }
+
+    function getTimelineWidthBetweenTimes(startTime, endTime, pxPerBeat = getTimelinePixelsPerBeat(), tempoMap = getEffectiveTempoMap()) {
+        const startBeat = getTimelineBeatAtTime(startTime, tempoMap);
+        const endBeat = getTimelineBeatAtTime(endTime, tempoMap);
+        return Math.max(0, (endBeat - startBeat) * pxPerBeat);
+    }
+
+    function formatRulerTime(seconds) {
+        const safeSeconds = Math.max(0, Number.isFinite(seconds) ? seconds : 0);
+        const m = Math.floor(safeSeconds / 60);
+        const s = Math.floor(safeSeconds % 60);
+        return `${m}:${s.toString().padStart(2, '0')}`;
+    }
+
+    function collectTimeRulerMarks(endTime, pxPerBeat = getTimelinePixelsPerBeat(), tempoMap = getEffectiveTempoMap(), minLabelDist = 60) {
+        if (!Number.isFinite(endTime) || endTime < 0) return [];
+
+        const referenceSegment = getTempoSegmentAtTime(0, tempoMap);
+        const referencePxPerSecond = pxPerBeat / referenceSegment.secondsPerBeat;
+        const timeSteps = [1, 2, 5, 10, 15, 30, 60];
+        let timeStep = timeSteps[timeSteps.length - 1];
+
+        for (const step of timeSteps) {
+            if (step * referencePxPerSecond >= minLabelDist) {
+                timeStep = step;
+                break;
+            }
+        }
+
+        const marks = [];
+        let lastLabelX = -Infinity;
+
+        for (let seconds = 0; seconds <= endTime + 1e-9; seconds += timeStep) {
+            const roundedSeconds = Number(seconds.toFixed(6));
+            const x = Number(getTimelineXAtTime(roundedSeconds, pxPerBeat, tempoMap).toFixed(6));
+            if ((x - lastLabelX) < minLabelDist && roundedSeconds !== 0) continue;
+
+            marks.push({
+                time: roundedSeconds,
+                x,
+                label: formatRulerTime(roundedSeconds),
+                isMajor: roundedSeconds % 60 === 0
+            });
+            lastLabelX = x;
+        }
+
+        return marks;
+    }
+
+    function collectBeatGridMarks(endTime, tempoMap = STATE.tempoMap, timeSignatureMap = STATE.timeSignatureMap) {
+        if (!Number.isFinite(endTime) || endTime < 0) return [];
+
+        const marks = [];
+        let beatTime = 0;
+
+        while (beatTime <= endTime + 1e-9) {
+            const beatInfo = getBarBeatAtTime(beatTime, tempoMap, timeSignatureMap);
+            marks.push({
+                time: Number(beatTime.toFixed(6)),
+                bar: beatInfo.bar,
+                beatInBar: beatInfo.beatInBar,
+                isBarStart: beatInfo.beatInBar === 1
+            });
+            beatTime = getNextBeatAfter(beatTime + 1e-6, tempoMap);
+        }
+
+        return marks;
+    }
+
+    function collectMetronomeEvents(startTime, endTime, tempoMap = STATE.tempoMap, timeSignatureMap = STATE.timeSignatureMap) {
+        if (!Number.isFinite(startTime) || !Number.isFinite(endTime) || endTime <= startTime) return [];
+
+        const events = [];
+        const startBeat = getBeatPositionAtTime(startTime, tempoMap);
+        const nearestBeat = Math.round(startBeat);
+        let nextBeatTime = null;
+
+        if (Math.abs(startBeat - nearestBeat) < 1e-6) {
+            nextBeatTime = getTimeAtBeat(nearestBeat, tempoMap);
+        } else {
+            nextBeatTime = getNextBeatAfter(startTime, tempoMap);
+        }
+
+        while (Number.isFinite(nextBeatTime) && nextBeatTime <= endTime + 1e-9) {
+            const beatInfo = getBarBeatAtTime(nextBeatTime, tempoMap, timeSignatureMap);
+            events.push({
+                time: Number(nextBeatTime.toFixed(6)),
+                beatIndex: beatInfo.beatIndex,
+                beatInBar: beatInfo.beatInBar,
+                isAccent: beatInfo.beatInBar === 1
+            });
+            nextBeatTime = getNextBeatAfter(nextBeatTime + 1e-6, tempoMap);
+        }
+
+        return events;
+    }
+
+    function resetMetronomeSchedule(time = STATE.currentTime) {
+        if (!STATE.metronome) return;
+        STATE.metronome.cursorTime = Math.max(0, Number.isFinite(time) ? time : 0);
+        STATE.metronome.scheduledUntilAudioTime = 0;
+        STATE.metronome.lastScheduledBeatKey = null;
+    }
+
+    function ensureSharedAudioContext() {
+        if (!sharedAudioCtx) {
+            sharedAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (sharedAudioCtx.state === 'suspended') {
+            sharedAudioCtx.resume().catch((e) => console.warn('Metronome audio resume failed:', e));
+        }
+        return sharedAudioCtx;
+    }
+
+    function getTrackRowHeight() {
+        return Math.max(40, Math.min(160, Number.isFinite(STATE.trackRowHeight) ? STATE.trackRowHeight : 64));
+    }
+
+    function applyTrackRowHeight(newHeight) {
+        STATE.trackRowHeight = Math.max(40, Math.min(160, Math.round(newHeight)));
+        document.documentElement.style.setProperty('--track-row-height', `${STATE.trackRowHeight}px`);
+    }
+
+    function applyTimelineHorizontalZoom(nextPxPerBeat, anchorClientX = null) {
+        const clampedPxPerBeat = Math.max(10, Math.min(300, nextPxPerBeat));
+        const currentPxPerBeat = getTimelinePixelsPerBeat();
+        if (Math.abs(clampedPxPerBeat - currentPxPerBeat) < 0.001) return;
+
+        const container = DOM.timelineLanes;
+        const viewportRect = container.getBoundingClientRect();
+        const clientX = Number.isFinite(anchorClientX) ? anchorClientX : (container.getBoundingClientRect().left + container.clientWidth / 2);
+        const localX = Math.max(0, Math.min(container.clientWidth, clientX - viewportRect.left));
+        const anchorBeat = (container.scrollLeft + localX) / currentPxPerBeat;
+
+        setTimelinePixelsPerBeat(clampedPxPerBeat);
+        updateTotalDuration();
+        STATE.clips.forEach(c => c.updateDOMPosition());
+        updatePlayhead();
+        if (typeof updateGridBackground === 'function') updateGridBackground();
+
+        const nextScrollLeft = (anchorBeat * getTimelinePixelsPerBeat()) - localX;
+        container.scrollLeft = Math.max(0, nextScrollLeft);
+        DOM.rulerContent.scrollLeft = container.scrollLeft;
+    }
+
+    function updatePlayButtonUI() {
+        if (!DOM.playBtn) return;
+
+        const isPlaying = !!STATE.isPlaying;
+        DOM.playBtn.innerHTML = isPlaying ? `
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <rect x="7" y="6" width="3.5" height="12" rx="1"></rect>
+                <rect x="13.5" y="6" width="3.5" height="12" rx="1"></rect>
+            </svg>
+        ` : `
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M8 6.5v11l9-5.5z"></path>
+            </svg>
+        `;
+        DOM.playBtn.title = isPlaying ? '暂停' : '播放';
+        DOM.playBtn.setAttribute('aria-label', DOM.playBtn.title);
+        DOM.playBtn.setAttribute('aria-pressed', isPlaying ? 'true' : 'false');
+        DOM.playBtn.classList.toggle('btn-primary', isPlaying);
+    }
+
+    function updateRecordButtonUI() {
+        if (!DOM.recordBtn) return;
+        DOM.recordBtn.classList.toggle('active-record', !!STATE.isRecording);
+        DOM.recordBtn.setAttribute('aria-pressed', STATE.isRecording ? 'true' : 'false');
+        DOM.recordBtn.title = STATE.isRecording ? '停止 MIDI 录音' : '开始 MIDI 录音';
+        DOM.recordBtn.setAttribute('aria-label', DOM.recordBtn.title);
+        DOM.recordBtn.style.background = STATE.isRecording ? "rgba(255, 69, 58, 0.3)" : "";
+    }
+
+    function scheduleClickSound(audioWhen, isAccent, soundName = STATE.metronome.sound, volume = STATE.metronome.volume) {
+        const audioCtx = ensureSharedAudioContext();
+        if (!audioCtx) return;
+
+        const gainNode = audioCtx.createGain();
+        const filterNode = audioCtx.createBiquadFilter();
+        const osc = audioCtx.createOscillator();
+        const isWoodblock = soundName === 'woodblock';
+        const baseVolume = Math.max(0, Math.min(1, Number.isFinite(volume) ? volume : 0.7));
+        const accentGain = isAccent ? 1.0 : 0.65;
+        const peakGain = baseVolume * accentGain * (isWoodblock ? 0.32 : 0.22);
+        const attack = 0.001;
+        const decay = isWoodblock ? 0.06 : 0.035;
+
+        osc.type = isWoodblock ? 'triangle' : 'square';
+        osc.frequency.setValueAtTime(isAccent ? (isWoodblock ? 1850 : 1400) : (isWoodblock ? 1450 : 1050), audioWhen);
+
+        filterNode.type = isWoodblock ? 'bandpass' : 'highpass';
+        filterNode.frequency.setValueAtTime(isAccent ? (isWoodblock ? 1900 : 1200) : (isWoodblock ? 1500 : 900), audioWhen);
+        filterNode.Q.setValueAtTime(isWoodblock ? 8 : 1.2, audioWhen);
+
+        gainNode.gain.setValueAtTime(0.0001, audioWhen);
+        gainNode.gain.linearRampToValueAtTime(peakGain, audioWhen + attack);
+        gainNode.gain.exponentialRampToValueAtTime(0.0001, audioWhen + decay);
+
+        osc.connect(filterNode);
+        filterNode.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+
+        osc.start(audioWhen);
+        osc.stop(audioWhen + decay + 0.02);
+    }
+
+    function scheduleMetronomeWindow() {
+        if (!STATE.isPlaying || !STATE.metronome?.enabled) return;
+        if (!sharedAudioCtx || sharedAudioCtx.state === 'closed') return;
+
+        const ctxNow = sharedAudioCtx.currentTime;
+        const lookahead = Math.max(0.05, STATE.metronome.lookaheadSec || 0.12);
+        const visualWindowEnd = STATE.currentTime + lookahead;
+        const startTime = Math.max(0, STATE.metronome.cursorTime ?? STATE.currentTime);
+        const tempoMap = getEffectiveTempoMap();
+        const events = collectMetronomeEvents(startTime, visualWindowEnd, tempoMap, STATE.timeSignatureMap);
+
+        for (const event of events) {
+            const beatKey = `${event.beatIndex}@${event.time.toFixed(6)}`;
+            if (beatKey === STATE.metronome.lastScheduledBeatKey) continue;
+
+            const audioWhen = ctxNow + Math.max(0, event.time - STATE.currentTime);
+            scheduleClickSound(audioWhen, event.isAccent, STATE.metronome.sound, STATE.metronome.volume);
+            STATE.metronome.lastScheduledBeatKey = beatKey;
+            STATE.metronome.cursorTime = event.time + 1e-6;
+        }
+
+        STATE.metronome.scheduledUntilAudioTime = ctxNow + lookahead;
+    }
+
+    function updateMetronomeUI() {
+        if (DOM.metronomeToggleBtn) {
+            DOM.metronomeToggleBtn.classList.toggle('btn-primary', !!STATE.metronome.enabled);
+            DOM.metronomeToggleBtn.title = STATE.metronome.enabled ? '节拍器已开启' : '节拍器已关闭';
+            DOM.metronomeToggleBtn.setAttribute('aria-label', DOM.metronomeToggleBtn.title);
+            DOM.metronomeToggleBtn.setAttribute('aria-pressed', STATE.metronome.enabled ? 'true' : 'false');
+        }
+        if (DOM.metronomeSoundClickBtn) {
+            DOM.metronomeSoundClickBtn.classList.toggle('active', STATE.metronome.sound === 'click');
+        }
+        if (DOM.metronomeSoundWoodblockBtn) {
+            DOM.metronomeSoundWoodblockBtn.classList.toggle('active', STATE.metronome.sound === 'woodblock');
+        }
+        if (DOM.metronomeBpmInput) {
+            DOM.metronomeBpmInput.value = String(STATE.metronome.fallbackBpm);
+        }
+    }
+
+    function toggleMetronomeEnabled() {
+        STATE.metronome.enabled = !STATE.metronome.enabled;
+        resetMetronomeSchedule(STATE.currentTime);
+        if (STATE.metronome.enabled) ensureSharedAudioContext();
+        updateMetronomeUI();
+    }
+
+    function setMetronomeSound(soundName) {
+        STATE.metronome.sound = soundName === 'click' ? 'click' : 'woodblock';
+        resetMetronomeSchedule(STATE.currentTime);
+        updateMetronomeUI();
+    }
+
+    function setMetronomeFallbackBpm(nextBpm) {
+        const parsed = Math.round(Number(nextBpm));
+        if (!Number.isFinite(parsed)) return;
+
+        STATE.metronome.fallbackBpm = Math.max(20, Math.min(300, parsed));
+        if (!STATE.midiTiming?.hasTempoEvents) {
+            STATE.bpm = STATE.metronome.fallbackBpm;
+            STATE.tempoMap = buildTempoMap([], STATE.bpm, 0);
+            updateTotalDuration();
+            resetMetronomeSchedule(STATE.currentTime);
+            setTempoLaneVisible(STATE.tempoLaneVisible);
+        }
+        updateMetronomeUI();
+    }
+
     function processMidiFile(file) {
         if (!file) return;
 
         DOM.loading.style.display = 'flex';
+        const oldTempoState = cloneTempoState();
         const reader = new FileReader();
         reader.onload = (ev) => {
             try {
                 const arrayBuffer = ev.target.result;
                 const midiData = new Midi(arrayBuffer);
 
-                // 1. 读取 BPM 和 拍号
-                if (midiData.header) {
-                    if (midiData.header.tempos && midiData.header.tempos.length > 0) {
-                        STATE.bpm = Math.round(midiData.header.tempos[0].bpm);
-                    }
-                    if (midiData.header.timeSignatures && midiData.header.timeSignatures.length > 0) {
-                        const tsObj = midiData.header.timeSignatures[0];
-                        if (tsObj.timeSignature && tsObj.timeSignature.length >= 1) {
-                            STATE.timeSignature = tsObj.timeSignature[0];
-                        }
-                    }
-                    console.log(`已更新工程设置: BPM=${STATE.bpm}, 拍号=${STATE.timeSignature}/4`);
-                }
+                const headerTempos = midiData.header?.tempos || [];
+                const headerTimeSignatures = midiData.header?.timeSignatures || [];
 
                 // ==========================================
                 // 🔥🔥 新增：自动移除 MIDI 开头空白 🔥🔥
@@ -8405,6 +9752,25 @@
                 // ==========================================
                 // 🔥🔥 结束自动移除逻辑 🔥🔥
                 // ==========================================
+
+                const effectiveTrimOffset = (globalStartTime > 0.05 && globalStartTime !== Infinity) ? globalStartTime : 0;
+                STATE.midiTiming = {
+                    source: file.name || 'imported-midi',
+                    trimOffset: effectiveTrimOffset,
+                    hasTempoEvents: headerTempos.length > 0
+                };
+                STATE.tempoMap = buildTempoMap(headerTempos, STATE.bpm, effectiveTrimOffset);
+                STATE.timeSignatureMap = buildTimeSignatureMap(headerTimeSignatures, STATE.timeSignature, effectiveTrimOffset);
+
+                if (STATE.tempoMap.length > 0) {
+                    STATE.bpm = Math.round(STATE.tempoMap[0].bpm);
+                }
+                if (STATE.timeSignatureMap.length > 0) {
+                    STATE.timeSignature = STATE.timeSignatureMap[0].numerator;
+                }
+
+                console.log(`已更新工程设置: BPM=${STATE.bpm}, 拍号=${STATE.timeSignature}/4, Tempo Events=${STATE.tempoMap.length}`);
+                resetMetronomeSchedule(STATE.currentTime);
 
 
                 // 获取所有原始轨道名称
@@ -8469,9 +9835,12 @@
                 reorderTracks();
 
                 if (newTrackIds.length > 0) {
+                    const newTempoState = cloneTempoState();
                     HistoryMgr.add({
                         type: 'import_tracks',
-                        trackIds: newTrackIds
+                        trackIds: newTrackIds,
+                        oldTempoState,
+                        newTempoState
                     });
                 }
 
@@ -8837,7 +10206,11 @@
 
             // 🔥 核心修改：只在末尾增加少量缓冲 (例如 1 个小节的时间，或固定 2 秒)
             // 这样既不会顶格太难受，也不会留出大片空白
-            const bufferSeconds = (60 / STATE.bpm) * 4; // 自动留 1 个小节的缓冲
+            const effectiveTempoMap = getEffectiveTempoMap();
+            const tempoSegment = getTempoSegmentAtTime(maxTime, effectiveTempoMap);
+            const activeSignature = getTimeSignatureAtTime(maxTime, STATE.timeSignatureMap);
+            const beatsPerBar = activeSignature.numerator * (4 / activeSignature.denominator);
+            const bufferSeconds = tempoSegment.secondsPerBeat * beatsPerBar; // 自动留 1 个小节的缓冲
             maxTime += bufferSeconds;
         } else {
             // 如果没有任何 Clip，保持一个默认长度 (例如 10秒)
@@ -8846,8 +10219,10 @@
 
         STATE.totalDuration = maxTime;
 
+        STATE.totalTimelineBeats = getTimelineBeatAtTime(maxTime);
+
         // 3. 根据内容更新容器宽度
-        const contentWidth = (maxTime * STATE.pxPerSec) + 20; // +100px 防止右侧溢出
+        const contentWidth = (STATE.totalTimelineBeats * getTimelinePixelsPerBeat()) + 20;
 
         // 这是一个安全检查，防止宽度过小导致布局崩坏
         const minWidth = DOM.timelineLanes.clientWidth;
@@ -8863,6 +10238,7 @@
         DOM.timeRuler.style.width = rulerCompensatedWidth + 'px';
 
         renderRulers();
+        if (STATE.tempoLaneVisible) renderTempoLane();
     }
 
     // --- 播放控制 ---
@@ -8875,14 +10251,13 @@
 
             DOM.audio.pause();
             if (bgVideoElement) bgVideoElement.pause();
-            DOM.playBtn.innerText = "PLAY (Space)";
-            DOM.playBtn.classList.remove('btn-primary');
+            updatePlayButtonUI();
+            resetMetronomeSchedule(STATE.currentTime);
         } else {
             // === 播放状态 ===
             STATE.isPlaying = true;
             STATE.lastFrameTime = performance.now();
-            DOM.playBtn.innerText = "PAUSE (Space)";
-            DOM.playBtn.classList.add('btn-primary');
+            updatePlayButtonUI();
 
             // 2. 🔥【关键修复】播放时强制关闭阻尼，消除抖动
             if (controls) {
@@ -8891,6 +10266,11 @@
             }
 
             syncAudio();
+            if (STATE.metronome.enabled) {
+                ensureSharedAudioContext();
+                resetMetronomeSchedule(STATE.currentTime);
+                scheduleMetronomeWindow();
+            }
             if (bgVideoElement) {
                 bgVideoElement.play().catch(e => console.log("Bg video play blocked"));
             }
@@ -8901,8 +10281,8 @@
         STATE.isPlaying = false;
         DOM.audio.pause();
         if (bgVideoElement) bgVideoElement.pause();
-        DOM.playBtn.innerText = "PLAY (Space)";
-        DOM.playBtn.classList.remove('btn-primary');
+        updatePlayButtonUI();
+        resetMetronomeSchedule(0);
         seekTo(0);
     }
 
@@ -8928,6 +10308,8 @@
         // 如果正在播放，同步音频
         if (STATE.isPlaying) {
             syncAudio();
+            resetMetronomeSchedule(STATE.currentTime);
+            if (STATE.metronome.enabled) scheduleMetronomeWindow();
             // 如果视频因为某些原因暂停了，确保它继续播放
             if (bgVideoElement && bgVideoElement.paused) {
                 bgVideoElement.play().catch(() => {});
@@ -8953,7 +10335,7 @@
 
     function updatePlayhead() {
         // UI 更新
-        const px = STATE.currentTime * STATE.pxPerSec;
+        const px = getTimelineXAtTime(STATE.currentTime);
 
         // 1. 移动下方轨道的指针 (原有)
         DOM.playhead.style.left = px + 'px';
@@ -8971,105 +10353,72 @@
     }
 
     function renderRulers() {
-        const duration = STATE.totalDuration + (1000 / STATE.pxPerSec); // 对应上面的预留空间
-        const pxPerSec = STATE.pxPerSec;
-        const totalWidth = duration * pxPerSec;
+        const duration = STATE.totalDuration;
+        const pxPerBeat = getTimelinePixelsPerBeat();
+        const effectiveTempoMap = getEffectiveTempoMap();
+        const beatGridMarks = collectBeatGridMarks(duration, effectiveTempoMap, STATE.timeSignatureMap);
+        const timeGridMarks = collectTimeRulerMarks(duration, pxPerBeat, effectiveTempoMap);
+        const totalWidth = Math.max(0, (STATE.totalTimelineBeats || getTimelineBeatAtTime(duration)) * pxPerBeat);
 
         // 设置容器宽度
         DOM.barRuler.style.width = totalWidth + 'px';
         DOM.timeRuler.style.width = totalWidth + 'px';
 
         // ==========================================
-        // 1. 智能绘制时间轨道 (Time Ruler)
+        // 1. Time Ruler
         // ==========================================
         DOM.timeRuler.innerHTML = '';
-
-        // 定义最小标签间距 (像素)
-        const minTimeLabelDist = 60;
-
-        // 基础步长策略 (秒): 1, 2, 5, 10, 15, 30, 60
-        const timeSteps = [1, 2, 5, 10, 15, 30, 60];
-        let timeStep = 1;
-
-        // 找到合适的步长
-        for (let step of timeSteps) {
-            if (step * pxPerSec >= minTimeLabelDist) {
-                timeStep = step;
-                break;
-            }
-        }
-
-        for (let s = 0; s < duration; s += timeStep) {
-            const div = document.createElement('div');
-            div.className = 'ruler-mark';
-
-            // 如果是整分钟，或者根据步长判断是"大刻度"，加粗显示
-            const isMajor = (s % 60 === 0);
-            if (isMajor) div.className += ' major';
-
-            div.style.left = (s * pxPerSec) + 'px';
-            div.innerText = formatRulerTime(s);
-            DOM.timeRuler.appendChild(div);
-        }
+        timeGridMarks.forEach((mark) => {
+            const timeLabel = document.createElement('div');
+            timeLabel.className = mark.isMajor ? 'ruler-mark major' : 'ruler-mark';
+            timeLabel.style.left = `${mark.x}px`;
+            timeLabel.innerText = mark.label;
+            DOM.timeRuler.appendChild(timeLabel);
+        });
 
         // ==========================================
         // 2. 智能绘制小节轨道 (Bar Ruler)
         // ==========================================
         DOM.barRuler.innerHTML = '';
+        const minBarLabelDist = 40;
+        let lastLabelX = -Infinity;
+        DOM.grid.innerHTML = '';
 
-        const bps = STATE.bpm / 60;
-        const secPerBeat = 1 / bps;
-        const secPerBar = secPerBeat * STATE.timeSignature;
-        const totalBars = Math.ceil(duration / secPerBar);
+        beatGridMarks.forEach((mark, index) => {
+            const currentX = getTimelineXAtTime(mark.time, pxPerBeat);
+            const prevMark = beatGridMarks[index - 1];
+            const localBeatSpacingPx = prevMark ? (currentX - getTimelineXAtTime(prevMark.time, pxPerBeat)) : pxPerBeat;
 
-        // 计算当前缩放下一小节有多宽
-        const pxPerBar = secPerBar * pxPerSec;
-        const minBarLabelDist = 40; // 小节号比较短，间距可以小一点
+            const gridLine = document.createElement('div');
+            gridLine.style.position = 'absolute';
+            gridLine.style.left = `${currentX}px`;
+            gridLine.style.top = '0';
+            gridLine.style.bottom = '0';
+            gridLine.style.width = '1px';
+            gridLine.style.background = mark.isBarStart ? 'rgba(255,255,255,0.16)' : 'rgba(255,255,255,0.06)';
+            DOM.grid.appendChild(gridLine);
 
-        // 动态计算步长 (Step): 1 -> 2 -> 4 -> 8 -> 16 ... (2的倍数符合音乐逻辑)
-        let barStep = 1;
-        while (pxPerBar * barStep < minBarLabelDist) {
-            barStep *= 2;
-        }
-
-        for (let b = 0; b < totalBars; b++) {
-            const currentBarX = b * secPerBar * pxPerSec;
-
-            // 1. 绘制小节号 (只有符合步长的才绘制文字)
-            if (b % barStep === 0) {
-                const div = document.createElement('div');
-                div.className = 'ruler-mark major';
-                div.style.left = currentBarX + 'px';
-                div.style.borderLeftColor = '#aaa';
-                div.innerText = (b + 1).toString();
-                DOM.barRuler.appendChild(div);
-            } else if (pxPerBar * barStep > minBarLabelDist * 2) {
-                // 如果空间非常充裕，但又没到 barStep，可以画个淡一点的线但不写字 (可选)
-                // 这里为了简洁暂不画中间的细线，避免混乱
-            }
-
-            // 2. 绘制拍子细分 (Beat Subdivisions)
-            // 只有当"一小节"非常宽（比如大于 150px）时，才显示拍子刻度
-            if (pxPerBar >= 150) {
-                for(let beat = 1; beat < STATE.timeSignature; beat++) {
-                    const beatDiv = document.createElement('div');
-                    beatDiv.className = 'ruler-mark';
-                    // 计算位置
-                    beatDiv.style.left = (currentBarX + (beat * secPerBeat * pxPerSec)) + 'px';
-                    beatDiv.style.height = '5px'; // 短线
-                    beatDiv.style.top = '15px';   // 靠下
-                    beatDiv.style.borderLeft = '1px solid #444';
-                    DOM.barRuler.appendChild(beatDiv);
+            if (mark.isBarStart) {
+                if ((currentX - lastLabelX) >= minBarLabelDist) {
+                    const div = document.createElement('div');
+                    div.className = 'ruler-mark major';
+                    div.style.left = currentX + 'px';
+                    div.style.borderLeftColor = '#aaa';
+                    div.innerText = mark.bar.toString();
+                    DOM.barRuler.appendChild(div);
+                    lastLabelX = currentX;
                 }
+            } else if (localBeatSpacingPx >= 24) {
+                const beatDiv = document.createElement('div');
+                beatDiv.className = 'ruler-mark';
+                beatDiv.style.left = currentX + 'px';
+                beatDiv.style.height = '5px';
+                beatDiv.style.top = '15px';
+                beatDiv.style.borderLeft = '1px solid #444';
+                DOM.barRuler.appendChild(beatDiv);
             }
-        }
-    }
 
-    // 辅助格式化时间 0:05
-    function formatRulerTime(seconds) {
-        const m = Math.floor(seconds / 60);
-        const s = Math.floor(seconds % 60);
-        return `${m}:${s.toString().padStart(2, '0')}`;
+        });
     }
 
     // --- 实时 HUD 更新逻辑 (Spherical 版) ---
@@ -9187,7 +10536,7 @@
                     STATE.totalDuration = currentMaxDuration + 2; // 始终保持 2秒 的余量
 
                     // 手动更新容器宽度，让滚动条能滚得更远
-                    const newWidth = (STATE.totalDuration * STATE.pxPerSec) + 20;
+                    const newWidth = (getTimelineBeatAtTime(STATE.totalDuration) * getTimelinePixelsPerBeat()) + 20;
                     DOM.lanes.style.width = newWidth + 'px';
                     DOM.grid.style.width = newWidth + 'px';
                     DOM.barRuler.style.width = newWidth + 'px';
@@ -9207,6 +10556,9 @@
 
             // 检查音频同步 (负责启动/停止/跳转音频)
             syncAudio();
+            if (STATE.metronome.enabled) {
+                scheduleMetronomeWindow();
+            }
 
             // 移动 3D 相机
             const idealTargetX = STATE.currentTime * STATE.playbackSpeed;
@@ -9680,14 +11032,16 @@
                 timestamp: new Date().toISOString(),
                 settings: {
                     duration: STATE.totalDuration,
-                    pxPerSec: STATE.pxPerSec,
+                    pxPerSec: getTimelinePixelsPerBeat(),
+                    pxPerBeat: getTimelinePixelsPerBeat(),
+                    trackRowHeight: STATE.trackRowHeight,
                     playbackSpeed: STATE.playbackSpeed,
                     noteThickness: STATE.noteThickness,
                     noteHeightScale: STATE.noteHeightScale,
 
                     // ✅【修复重点】如果 DOM 元素不存在，直接用 STATE 变量
                     sceneZoom: DOM.sceneZoom ? parseInt(DOM.sceneZoom.value) : STATE.playbackSpeed,
-                    timelineZoom: STATE.pxPerSec, // ✅ 不再读取 DOM.timelineZoom.value
+                    timelineZoom: getTimelinePixelsPerBeat(),
 
                     zSeparation: STATE.zSeparation,
                     noteShape: STATE.noteShape,
@@ -9699,6 +11053,12 @@
                     type: currentBgType,
                     data: storedBgBase64ForSave
                 },
+                tempoMap: JSON.parse(JSON.stringify(STATE.tempoMap || [])),
+                timeSignatureMap: JSON.parse(JSON.stringify(STATE.timeSignatureMap || [])),
+                midiTiming: JSON.parse(JSON.stringify(STATE.midiTiming || {})),
+                bpm: STATE.bpm,
+                timeSignature: STATE.timeSignature,
+                tempoLaneVisible: !!STATE.tempoLaneVisible,
                 groups: serializedGroups,
                 tracks: STATE.tracks.map(t => ({
                     id: t.id,
@@ -9797,7 +11157,8 @@
 
             // 1. 恢复全局设置
             if (json.settings) {
-                STATE.pxPerSec = json.settings.pxPerSec || 50;
+                setTimelinePixelsPerBeat(json.settings.pxPerBeat || json.settings.timelineZoom || json.settings.pxPerSec || 50);
+                STATE.trackRowHeight = json.settings.trackRowHeight || 64;
                 STATE.playbackSpeed = json.settings.playbackSpeed || 20;
                 STATE.noteThickness = json.settings.noteThickness || 1.0;
                 STATE.noteHeightScale = json.settings.noteHeightScale || 1.5;
@@ -9809,8 +11170,9 @@
                     if (shapeSel) shapeSel.value = STATE.noteShape;
                 }
 
-                if(DOM.timelineZoom) DOM.timelineZoom.value = STATE.pxPerSec;
+                if(DOM.timelineZoom) DOM.timelineZoom.value = getTimelinePixelsPerBeat();
                 if(DOM.sceneZoom) DOM.sceneZoom.value = STATE.playbackSpeed;
+                applyTrackRowHeight(STATE.trackRowHeight);
 
                 const thickSlider = document.getElementById('thicknessSlider');
                 if(thickSlider) thickSlider.value = STATE.noteThickness * 100;
@@ -9831,6 +11193,16 @@
                 // 调用全局函数设置状态 (它会自动处理 checkbox 和 3D 场景)
                 setStarfieldState(starVisible);
             }
+
+            restoreTempoState({
+                tempoMap: json.tempoMap,
+                timeSignatureMap: json.timeSignatureMap,
+                midiTiming: json.midiTiming,
+                bpm: json.bpm,
+                tempoLaneVisible: json.tempoLaneVisible
+            });
+            STATE.timeSignature = json.timeSignature || STATE.timeSignature;
+            setTempoLaneVisible(STATE.tempoLaneVisible);
 
             // 2. 恢复背景
             if (json.background) {
@@ -9934,6 +11306,7 @@
 
             updateTotalDuration();
             autoFitZoom(STATE.totalDuration);
+            setTempoLaneVisible(STATE.tempoLaneVisible);
 
             // 如果有音频，恢复播放器
             const firstAudioClip = STATE.clips.find(c => c.track.type === 'audio');
@@ -10040,8 +11413,19 @@
             STATE.clips = [];
             STATE.groups = {};
             STATE.selectedTrackIds.clear();
+            STATE.selectedTempoPointId = null;
             STATE.nextTrackId = 1;
             STATE.nextGroupId = 1;
+            STATE.bpm = 120;
+            STATE.timeSignature = 4;
+            STATE.tempoMap = buildTempoMap([], STATE.bpm, 0);
+            STATE.timeSignatureMap = buildTimeSignatureMap([], STATE.timeSignature, 0);
+            STATE.midiTiming = {
+                source: 'default',
+                trimOffset: 0,
+                hasTempoEvents: false
+            };
+            STATE.tempoLaneVisible = false;
 
             DOM.headers.innerHTML = '';
             DOM.lanes.innerHTML = `
@@ -10051,6 +11435,8 @@
             DOM.grid = document.getElementById('gridLines');
             DOM.playhead = document.getElementById('ui-playhead');
             updateGridBackground();
+            setTempoLaneVisible(false);
+            updateMetronomeUI();
 
             // 重置视角到默认
             ViewMgr.reset();
